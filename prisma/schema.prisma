@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  lastname  String
+  email     String   @unique
+  phone     String   @unique
+  location  String
+  createdAt DateTime @default(now())
+
+  quotes      Quote[]
+  chatThreads ChatThread[]
+}
+
+model Quote {
+  id          String   @id @default(uuid()) @db.Uuid
+  createdAt   DateTime @default(now()) // Fecha de creación
+  quoteNumber Int // Número de la cotización
+  customerId  String   @db.Uuid
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  items QuoteItem[] // Relación con los items de la cotización
+}
+
+model QuoteItem {
+  id          String @id @default(uuid()) @db.Uuid
+  description String
+  ean         String
+  codigo      String
+  quantity    Float
+  um          String
+
+  // Campos opcionales de precio/costo
+  price Float? // o Decimal? si requieres mayor precisión
+  cost  Float? // o Decimal?
+
+  quoteId String @db.Uuid
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model ChatThread {
+  id                String    @id @default(uuid()) @db.Uuid
+  openAiThreadId    String    @unique
+  clientPhoneNumber String
+  status            String    @default("ACTIVE")
+  createdAt         DateTime  @default(now())
+  lastInteraction   DateTime?
+  location          String?
+
+  // Relación con Customer (opcional)
+  customerId String?   @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Relación con mensajes
+  messages Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid()) @db.Uuid
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relación con el hilo de chat
+  chatThreadId String     @db.Uuid
+  chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+}
+
+model Counter {
+  name  String @id
+  value Int
+}
