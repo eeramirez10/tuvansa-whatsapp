@@ -1,6 +1,7 @@
 
 import nodemailer from 'nodemailer'
 import { QuoteEntity } from '../../domain/entities/quote.entity';
+import { envs } from '../../config/envs';
 
 
 export interface SendMailOptions {
@@ -14,11 +15,11 @@ export class EmailService {
 
   private transporter = nodemailer.createTransport({
     host: 'securemail25.carrierzone.com',
-    port: 587,
+    port: 25,
     secure: false,
     auth: {
-      user: "eeramirez@tuvansa.com.mx",
-      pass: "Ag7348pp**",
+      user: envs.EMAIL_ACCOUNT,
+      pass: envs.EMAIL_PASSWORD,
     },
   })
 
@@ -30,7 +31,7 @@ export class EmailService {
 
 
     const info = await this.transporter.sendMail({
-      from: 'eeramirez@tuvansa.com.mx',
+      from: envs.EMAIL_ACCOUNT,
       to, // list of receivers
       subject: subject, // Subject line
       html: htmlBody,

@@ -68,7 +68,7 @@ export class UserCuestionUseCase {
               const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
 
 
-              await new SendMailUseCase(this.emailService).execute({
+              new SendMailUseCase(this.emailService).execute({
                 to: ["eeramirez@tuvansa.com.mx", "gbarranco@tuvansa.com.mx"],
                 subject: "Nueva cotización desde WhatsApp Tuvansa",
                 htmlBody
