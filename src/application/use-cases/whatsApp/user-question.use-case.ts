@@ -68,7 +68,7 @@ export class UserCuestionUseCase {
                 location,
                 items
               } = clientInfo;
-              
+
               const newCustomer = await saveCustomerQuote.execute({ name: customer_name, lastname: customer_lastname, email, phone, location, items });
 
               const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
@@ -77,13 +77,19 @@ export class UserCuestionUseCase {
 
               new SendMailUseCase(this.emailService)
                 .execute({
-                  to: ["eeramirez@tuvansa.com.mx", "gbarranco@tuvansa.com.mx"],
+                  to: [
+                    "eeramirez@tuvansa.com.mx",
+                    "gbarranco@tuvansa.com.mx",
+                    "mavalos@tuvansa.com.mx",
+                    "rgrinberg@tuvansa.com.mx",
+                    "lquintero@tuvansa.com.mx"
+                  ],
                   subject: "Nueva cotización desde WhatsApp Tuvansa",
                   htmlBody
                 }).then(() => {
                   console.log('Correo enviado correctamente')
                 }).catch((e) => {
-                  console.log('[SendMailUseCase]',e)
+                  console.log('[SendMailUseCase]', e)
                 })
 
               return {

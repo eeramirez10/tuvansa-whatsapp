@@ -1,6 +1,5 @@
 import { ChatThreadRepository } from "../../../domain/repositories/chat-thread.repository";
 import { LanguageModelService } from "../../../domain/services/language-model.service";
-import { OpenAIService } from "../../../infrastructure/services/openai.service";
 
 
 export class SaveThreadUseCase {
