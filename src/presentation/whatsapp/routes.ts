@@ -39,6 +39,8 @@ export class WhatsAppRoutes {
     
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))
 
+    router.post('/send-email', whastAppController.sendEmail.bind(whastAppController))
+
     return router
     
 

@@ -78,6 +78,28 @@ export class WhatsAppController {
 
   }
 
+  async sendEmail(req: Request, res: Response) {
+
+    try {
+      await this.emailService.sendEmail({
+        to: ['eeramirez@tuvansa.com.mx'],
+        subject: "test",
+        htmlBody: "mensaje de prueba"
+      })
+
+      res.json({
+        ok: true,
+        msg: 'Enviado correctamente'
+      })
+
+    } catch (error) {
+      console.log(error)
+      res.status(500).json({ error: 'Hubo un error' })
+    }
+
+
+  }
+
 
 
 

@@ -14,8 +14,9 @@ export interface SendMailOptions {
 export class EmailService {
 
   private transporter = nodemailer.createTransport({
-    host: 'securemail25.carrierzone.com',
-    port: 25,
+    service: envs.MAIL_SERVICE,
+    host: envs.EMAIL_HOST,
+    port: 587,
     secure: false,
     auth: {
       user: envs.EMAIL_ACCOUNT,

@@ -60,21 +60,36 @@ export class UserCuestionUseCase {
               const clientInfo = JSON.parse(action.function.arguments) as ExtractedData;
               console.log({ clientInfo });
 
-              const { customer_name, customer_lastname, email, phone, location, items } = clientInfo;
+              const {
+                customer_name,
+                customer_lastname,
+                email,
+                phone,
+                location,
+                items
+              } = clientInfo;
+              
               const newCustomer = await saveCustomerQuote.execute({ name: customer_name, lastname: customer_lastname, email, phone, location, items });
 
               const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
 
               const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
 
+              new SendMailUseCase(this.emailService)
+                .execute({
+                  to: ["eeramirez@tuvansa.com.mx", "gbarranco@tuvansa.com.mx"],
+                  subject: "Nueva cotización desde WhatsApp Tuvansa",
+                  htmlBody
+                }).then(() => {
+                  console.log('Correo enviado correctamente')
+                }).catch((e) => {
+                  console.log('[SendMailUseCase]',e)
+                })
 
-              new SendMailUseCase(this.emailService).execute({
-                to: ["eeramirez@tuvansa.com.mx", "gbarranco@tuvansa.com.mx"],
-                subject: "Nueva cotización desde WhatsApp Tuvansa",
-                htmlBody
-              });
-
-              return { tool_call_id: action.id, output: `{success: true, msg:'Creado correctamente', quoteNumber:'${newCustomer?.quoteNumber}' }` };
+              return {
+                tool_call_id: action.id,
+                output: `{success: true, msg:'Creado correctamente', quoteNumber:'${newCustomer?.quoteNumber}' }`
+              };
             }
 
             if (functionName === 'update_customer_info') {
@@ -82,10 +97,19 @@ export class UserCuestionUseCase {
               const { customer_name, customer_lastname, email, phone, location } = clientInfo;
 
               await new UpdateCustomerUseCase(this.customerRepository).execute({
-                name: customer_name, lastname: customer_lastname, email, phone, location, id: ""
-              });
+                name: customer_name,
+                lastname: customer_lastname,
+                email,
+                phone,
+                location,
+                id: ""
+              })
 
-              return { tool_call_id: action.id, output: "{success: true, msg:'Actualizado correctamente'}" };
+              return {
+                tool_call_id: action.id,
+                output:
+                  "{success: true, msg:'Actualizado correctamente'}"
+              };
             }
 
             return { tool_call_id: action.id, output: "{success: true}" };
@@ -109,8 +133,8 @@ export class UserCuestionUseCase {
 
     const chatThread = await this.chatThreadRepository.getByThreadId(threadId)
 
-    console.log({chatThread})
- 
+    console.log({ chatThread })
+
 
     if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
 
