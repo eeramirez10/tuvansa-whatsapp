@@ -36,7 +36,7 @@ export class UserCuestionUseCase {
 
     const run = await this.openaiService.createRun({ threadId })
 
-    let newCustomer = null;
+    let newCustomerQuote = null;
 
 
     while (true) {
@@ -71,7 +71,7 @@ export class UserCuestionUseCase {
                 items
               } = clientInfo;
 
-              newCustomer = await saveCustomerQuote
+              newCustomerQuote = await saveCustomerQuote
                 .execute({
                   name: customer_name,
                   lastname: customer_lastname,
@@ -81,16 +81,16 @@ export class UserCuestionUseCase {
                   items
                 });
 
-              console.log({ newCustomer })
+              console.log({ newCustomerQuote })
               console.log({ threadId })
 
-              await this.chatThreadRepository.addCustomer(threadId, newCustomer.id)
+              await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote.customerId)
 
 
 
               return {
                 tool_call_id: action.id,
-                output: `{success: true, msg:'Creado correctamente', quoteNumber:'${newCustomer?.quoteNumber}' }`
+                output: `{success: true, msg:'Creado correctamente', quoteNumber:'${newCustomerQuote?.quoteNumber}' }`
               };
             }
 
@@ -135,10 +135,9 @@ export class UserCuestionUseCase {
 
     if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
 
-    console.log({ newCustomer })
-    if (newCustomer) {
+    if (newCustomerQuote) {
 
-      const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
+      const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomerQuote!.quoteNumber });
 
       const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
 
