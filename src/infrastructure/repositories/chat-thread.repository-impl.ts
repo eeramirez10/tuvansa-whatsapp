@@ -13,6 +13,11 @@ export class ChatThreadRepositoryImpl extends ChatThreadRepository {
   constructor(private readonly chatThreadDatasource: ChatThreadDatasource) {
     super();
   }
+  addCustomer(threadId: string, customerId: string): Promise<ChatThreadEntity> {
+    return this.chatThreadDatasource.addCustomer(threadId, customerId)
+  }
+
+
   getByThreadId(threadId: string): Promise<ChatThreadEntity | null> {
     return this.chatThreadDatasource.getByThreadId(threadId)
   }

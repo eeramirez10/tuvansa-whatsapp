@@ -4,9 +4,7 @@ import { CreateThreadDto } from "../dtos/create-thread.dto"
 import { ChatThreadEntity } from "../entities/chat-thread.entity";
 import { MessageEntity } from "../entities/message.entity";
 
-enum Term {
-  
-}
+
 
 
 
@@ -18,5 +16,9 @@ export abstract class ChatThreadDatasource {
 
   abstract getThreadByPhone({ phone }: { phone: string }): Promise<ChatThreadEntity | null>
 
-  abstract  getByThreadId(threadId: string): Promise<ChatThreadEntity | null>
+  abstract getByThreadId(threadId: string): Promise<ChatThreadEntity | null>
+
+  abstract addCustomer( threadId: string,  customerId: string): Promise<ChatThreadEntity>
+
+
 }

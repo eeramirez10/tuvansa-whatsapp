@@ -15,6 +15,21 @@ const prismaClient = new PrismaClient()
 export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
 
+  async addCustomer(threadId: string, customerId: string): Promise<ChatThreadEntity> {
+    return await prismaClient.chatThread.update({
+      where: {
+        id: threadId
+      },
+      data: {
+        customerId
+      }
+    })
+  }
+
+
+
+
+
   async getByThreadId(threadId: string): Promise<ChatThreadEntity | null> {
 
     try {

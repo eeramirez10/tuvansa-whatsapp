@@ -15,4 +15,7 @@ export abstract class ChatThreadRepository {
   abstract getThreadByPhone({ phone }: { phone: string }): Promise<ChatThreadEntity | null>
 
   abstract  getByThreadId(threadId: string): Promise<ChatThreadEntity | null>
+
+  abstract addCustomer( threadId: string,  customerId: string): Promise<ChatThreadEntity>
+
 }

@@ -11,4 +11,6 @@ export abstract class QuoteRepository {
   abstract addQuoteItems(addQuoteItems: AddQuoteItemsDto): Promise<QuoteItemEntity>
 
   abstract findByQuoteNumber({quoteNumber}:{ quoteNumber: number}):Promise<QuoteEntity | null> 
+
+  
 }

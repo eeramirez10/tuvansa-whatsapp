@@ -36,6 +36,8 @@ export class UserCuestionUseCase {
 
     const run = await this.openaiService.createRun({ threadId })
 
+    let newCustomer = null;
+
 
     while (true) {
 
@@ -69,28 +71,19 @@ export class UserCuestionUseCase {
                 items
               } = clientInfo;
 
-              const newCustomer = await saveCustomerQuote.execute({ name: customer_name, lastname: customer_lastname, email, phone, location, items });
-
-              const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
-
-              const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
-
-              new SendMailUseCase(this.emailService)
+              newCustomer = await saveCustomerQuote
                 .execute({
-                  to: [
-                    "eeramirez@tuvansa.com.mx",
-                    "gbarranco@tuvansa.com.mx",
-                    "mavalos@tuvansa.com.mx",
-                    "rgrinberg@tuvansa.com.mx",
-                    "lquintero@tuvansa.com.mx"
-                  ],
-                  subject: "Nueva cotización desde WhatsApp Tuvansa",
-                  htmlBody
-                }).then(() => {
-                  console.log('Correo enviado correctamente')
-                }).catch((e) => {
-                  console.log('[SendMailUseCase]', e)
-                })
+                  name: customer_name,
+                  lastname: customer_lastname,
+                  email,
+                  phone,
+                  location,
+                  items
+                });
+
+              await this.chatThreadRepository.addCustomer(threadId, newCustomer.id)
+
+
 
               return {
                 tool_call_id: action.id,
@@ -135,14 +128,34 @@ export class UserCuestionUseCase {
 
     const messages = await this.openaiService.getMessageList(threadId)
 
-
-
     const chatThread = await this.chatThreadRepository.getByThreadId(threadId)
 
-    console.log({ chatThread })
-
-
     if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
+
+
+    if(newCustomer ){
+
+      const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
+
+      const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
+  
+      new SendMailUseCase(this.emailService)
+        .execute({
+          to: [
+            "eeramirez@tuvansa.com.mx",
+            "gbarranco@tuvansa.com.mx",
+          ],
+          subject: "Nueva cotización desde WhatsApp Tuvansa",
+          htmlBody
+        }).then(() => {
+          console.log('Correo enviado correctamente')
+        }).catch((e) => {
+          console.log('[SendMailUseCase]', e)
+        })
+
+    }
+
+  
 
 
     return messages
