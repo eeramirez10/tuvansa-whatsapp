@@ -18,7 +18,7 @@ export abstract class ChatThreadDatasource {
 
   abstract getByThreadId(threadId: string): Promise<ChatThreadEntity | null>
 
-  abstract addCustomer( threadId: string,  customerId: string): Promise<ChatThreadEntity>
+  abstract addCustomer( openAiThreadId: string,  customerId: string): Promise<ChatThreadEntity>
 
 
 }

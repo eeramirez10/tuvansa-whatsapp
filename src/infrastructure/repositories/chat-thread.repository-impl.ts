@@ -13,8 +13,8 @@ export class ChatThreadRepositoryImpl extends ChatThreadRepository {
   constructor(private readonly chatThreadDatasource: ChatThreadDatasource) {
     super();
   }
-  addCustomer(threadId: string, customerId: string): Promise<ChatThreadEntity> {
-    return this.chatThreadDatasource.addCustomer(threadId, customerId)
+  addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
+    return this.chatThreadDatasource.addCustomer(openAiThreadId, customerId)
   }
 
 
