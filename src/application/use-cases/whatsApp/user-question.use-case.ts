@@ -132,13 +132,13 @@ export class UserCuestionUseCase {
 
     if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
 
-
-    if(newCustomer ){
+    console.log({ newCustomer })
+    if (newCustomer) {
 
       const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomer!.quoteNumber });
 
       const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
-  
+
       new SendMailUseCase(this.emailService)
         .execute({
           to: [
@@ -155,7 +155,7 @@ export class UserCuestionUseCase {
 
     }
 
-  
+
 
 
     return messages

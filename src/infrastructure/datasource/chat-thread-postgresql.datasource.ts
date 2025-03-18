@@ -16,12 +16,15 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
 
   async addCustomer(threadId: string, customerId: string): Promise<ChatThreadEntity> {
+
+    console.log('[ChatThread addCustomer]', { threadId, customerId })
+
     return await prismaClient.chatThread.update({
       where: {
         id: threadId
       },
       data: {
-        customerId
+        customerId: customerId
       }
     })
   }
