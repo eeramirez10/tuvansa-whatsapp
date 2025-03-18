@@ -81,6 +81,9 @@ export class UserCuestionUseCase {
                   items
                 });
 
+              console.log({ newCustomer })
+              console.log({ threadId })
+
               await this.chatThreadRepository.addCustomer(threadId, newCustomer.id)
 
 

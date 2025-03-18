@@ -18,6 +18,14 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
   async addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
 
 
+    const customer = await prismaClient.customer.findUnique({ where: { id: customerId } })
+
+    if(!customer){
+      console.error('Cliente no encontrado:', customerId);
+      throw new Error(`Cliente no existe con el id: ${customerId}`);
+    }
+
+
 
     return await prismaClient.chatThread.update({
       where: {
