@@ -18,4 +18,9 @@ export abstract class ChatThreadRepository {
 
   abstract addCustomer( openAiThreadId: string,  customerId: string): Promise<ChatThreadEntity>
 
+  abstract getThreads(): Promise<ChatThreadEntity[]>
+
+  abstract getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null>
+
+
 }

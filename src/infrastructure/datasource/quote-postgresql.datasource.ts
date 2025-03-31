@@ -12,14 +12,62 @@ const prismaClient = new PrismaClient()
 export class QuotePostgresqlDatasource extends QuoteDatasource {
 
 
+  async getQuote(id: string): Promise<QuoteEntity | null> {
+
+    try {
+
+      return prismaClient.quote.findFirst({
+        where: {
+          id
+        },
+        include:{
+          customer: true,
+          items: true,
+        }
+      })
+
+    } catch (error) {
+
+      console.log(error)
+
+      throw Error('Hubo un error en Quote revisar logs')
+
+    } finally {
+      prismaClient.$disconnect()
+    }
+
+  }
+
+  async getQuotes(): Promise<QuoteEntity[]> {
+    try {
+
+      return await prismaClient.quote.findMany({
+        include: {
+          customer: true,
+          items: true,
+        }
+      })
+
+    } catch (error) {
+
+      console.log(error)
+
+      throw Error('Hubo un error en Quote revisar logs')
+
+    } finally {
+      prismaClient.$disconnect()
+    }
+  }
+
+
 
   async findByQuoteNumber({ quoteNumber }: { quoteNumber: number; }): Promise<QuoteEntity | null> {
 
     try {
-      return await prismaClient.quote.findFirst({ 
+      return await prismaClient.quote.findFirst({
         where: { quoteNumber },
-        include:{
-          customer:true,
+        include: {
+          customer: true,
           items: true
         }
       })
@@ -38,18 +86,18 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
   async getNextQuoteNumber(): Promise<number> {
 
-    const findQuoteName = await prismaClient.counter.findFirst({ where:{ name:'quote' }})
-    console.log({findQuoteName})
+    const findQuoteName = await prismaClient.counter.findFirst({ where: { name: 'quote' } })
+    console.log({ findQuoteName })
 
-    if(!findQuoteName){
+    if (!findQuoteName) {
 
       const res = await prismaClient.counter.create({
-        data:{
-          name:'quote',
-          value:0
+        data: {
+          name: 'quote',
+          value: 0
         }
       })
-      console.log({res})
+      console.log({ res })
 
     }
 
@@ -77,8 +125,8 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           quoteNumber,
           customerId
         },
-        include:{
-          customer:true,
+        include: {
+          customer: true,
           items: true
         }
       })

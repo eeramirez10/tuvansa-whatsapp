@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { ChatThreadDatasource } from "../../domain/datasource/chat-thread.datasource";
 import { AddMessageDto } from "../../domain/dtos/add-message.dto";
 import { CreateThreadDto } from "../../domain/dtos/create-thread.dto";
@@ -6,13 +6,32 @@ import { ChatThreadEntity } from "../../domain/entities/chat-thread.entity";
 import { MessageEntity } from "../../domain/entities/message.entity";
 
 
-
-
-
 const prismaClient = new PrismaClient()
 
 
 export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
+
+
+  async getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null> {
+    return await prismaClient.chatThread.findFirst({
+      where:{
+        id: threadId
+      },
+      include:{
+        messages: {
+          orderBy:{
+            createdAt: 'asc'
+          }
+        }
+        
+      }
+    })
+  }
+
+
+  async getThreads(): Promise<ChatThreadEntity[]> {
+    return prismaClient.chatThread.findMany({ orderBy:{ createdAt: 'desc'}})
+  }
 
 
   async addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
@@ -36,10 +55,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
       }
     })
   }
-
-
-
-
 
   async getByThreadId(threadId: string): Promise<ChatThreadEntity | null> {
 
@@ -66,7 +81,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
 
   }
-
 
   async getThreadByPhone({ phone }: { phone: string; }): Promise<ChatThreadEntity | null> {
 
@@ -139,5 +153,7 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
     }
 
   }
+
+  
 
 }

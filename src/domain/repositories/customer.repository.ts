@@ -17,4 +17,6 @@ export abstract class CustomerRepository {
 
   abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
 
+  abstract getCustomers() : Promise<CustomerEntity[]>
+
 }

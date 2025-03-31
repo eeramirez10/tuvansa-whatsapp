@@ -39,10 +39,10 @@ model Quote {
 model QuoteItem {
   id          String @id @default(uuid()) @db.Uuid
   description String
-  ean         String
-  codigo      String
+  ean         String?
+  codigo      String?
   quantity    Float
-  um          String
+  um          String?
 
   // Campos opcionales de precio/costo
   price Float? // o Decimal? si requieres mayor precisión

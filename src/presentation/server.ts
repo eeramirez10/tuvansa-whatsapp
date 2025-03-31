@@ -1,5 +1,6 @@
 import { Router } from "express";
 import express from 'express';
+import cors from 'cors'
 
 interface Options {
   port: number,
@@ -21,9 +22,12 @@ export class Server {
 
   async start(){
 
+    const HOST = '0.0.0.0';
+
 
     this.app.use( express.json() ); // raw
     this.app.use( express.urlencoded({ extended: true }) ); // x-www-form-urlencoded
+    this.app.use(cors())
     // this.app.use( compression() )
 
 
@@ -31,7 +35,7 @@ export class Server {
 
     this.app.use(this.routes)
 
-    this.app.listen(this.port, () => {
+    this.app.listen(this.port,HOST, () => {
       console.log(`Server running on port ${ this.port }`);
     });
 

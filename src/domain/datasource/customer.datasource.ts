@@ -17,4 +17,6 @@ export abstract class CustomerDatasource {
   abstract getById(customerId: string): Promise<CustomerEntity | null>
 
   abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
+
+  abstract getCustomers() : Promise<CustomerEntity[]>
 }

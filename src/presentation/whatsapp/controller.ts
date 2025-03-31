@@ -47,6 +47,8 @@ export class WhatsAppController {
       ApiVersion,
     } = payload;
 
+    console.log(payload)
+
     try {
 
       const userQuestion = await new UserCuestionUseCase(

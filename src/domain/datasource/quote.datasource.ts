@@ -9,6 +9,8 @@ import { QuoteEntity } from "../entities/quote.entity";
 
 export abstract class QuoteDatasource {
 
+  abstract getQuotes(): Promise<QuoteEntity[]>
+
   abstract createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity>
 
   abstract addQuoteItems(addQuoteItems: AddQuoteItemsDto): Promise<QuoteItemEntity>
@@ -18,6 +20,6 @@ export abstract class QuoteDatasource {
   abstract findByQuoteNumber({quoteNumber}:{ quoteNumber: number}):Promise<QuoteEntity | null> 
 
   
-
+  abstract getQuote(id:string): Promise<QuoteEntity| null>
 
 }

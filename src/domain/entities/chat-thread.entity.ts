@@ -1,6 +1,7 @@
 // chat-thread.ts
 
 import { ChatThread } from "@prisma/client";
+import { MessageEntity } from "./message.entity";
 
 interface ChatThreadOptions {
   id: string;
@@ -22,6 +23,7 @@ export class ChatThreadEntity implements ChatThread {
   lastInteraction: Date | null;
   location: string | null;
   customerId: string | null;
+  messages?: MessageEntity[]
 
   constructor(options: ChatThreadOptions) {
     this.id = options.id;

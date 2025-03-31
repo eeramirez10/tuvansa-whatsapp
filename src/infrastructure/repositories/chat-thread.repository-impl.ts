@@ -10,9 +10,25 @@ import { MessageEntity } from "../../domain/entities/message.entity";
 
 export class ChatThreadRepositoryImpl extends ChatThreadRepository {
 
+
+  getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null> {
+    return this.chatThreadDatasource.getMessagesByThread(threadId)
+  }
+
+
+
   constructor(private readonly chatThreadDatasource: ChatThreadDatasource) {
     super();
   }
+  getThreads(): Promise<ChatThreadEntity[]> {
+    return this.chatThreadDatasource.getThreads()
+  }
+
+
+
+
+
+
   addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
     return this.chatThreadDatasource.addCustomer(openAiThreadId, customerId)
   }

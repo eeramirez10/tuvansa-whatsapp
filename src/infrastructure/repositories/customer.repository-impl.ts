@@ -14,8 +14,13 @@ export  class CustomerRepositoryImpl extends CustomerRepository {
 
 
 
+
   constructor(private readonly customerDatasource:CustomerDatasource){
     super();
+  }
+
+  getCustomers(): Promise<CustomerEntity[]> {
+    return this.customerDatasource.getCustomers()
   }
 
   getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity| null> {

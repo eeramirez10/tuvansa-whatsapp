@@ -11,20 +11,29 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
 
 
-  async getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity| null> {
+  async getCustomers(): Promise<CustomerEntity[]> {
+    return await prismaClient.customer.findMany({
+      include: {
+        quotes: true
+      }
+    })
+  }
 
-    console.log({quoteNumber})
+
+
+  async getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null> {
+
     return await prismaClient.customer.findFirst({
-      where:{
-        quotes:{
-          some:{
+      where: {
+        quotes: {
+          some: {
             quoteNumber
           }
         }
       },
-      include:{
-        quotes:{
-          include:{
+      include: {
+        quotes: {
+          include: {
             items: true
           }
         }
@@ -32,9 +41,18 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
     })
   }
   getById(customerId: string): Promise<CustomerEntity | null> {
+    console.log({ customerId })
     return prismaClient.customer.findFirst({
       where: {
         id: customerId
+      },
+      include: {
+        quotes: {
+          include: {
+            customer: true
+          }
+        },
+        chatThreads: true
       }
     })
   }

@@ -12,5 +12,10 @@ export abstract class QuoteRepository {
 
   abstract findByQuoteNumber({quoteNumber}:{ quoteNumber: number}):Promise<QuoteEntity | null> 
 
+  abstract getQuotes(): Promise<QuoteEntity[]>
+
+   
+  abstract getQuote(id:string): Promise<QuoteEntity| null>
+
   
 }

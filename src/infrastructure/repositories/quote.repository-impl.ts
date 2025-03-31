@@ -8,13 +8,24 @@ import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
 
 export class QuoteRepositoryImpl extends QuoteRepository {
 
-  
-  findByQuoteNumber({ quoteNumber }: { quoteNumber: number; }): Promise<QuoteEntity | null> {
-    return this.quoteDatasource.findByQuoteNumber({quoteNumber})
+
+
+  constructor(private readonly quoteDatasource: QuoteDatasource) {
+    super();
   }
 
-  constructor(private readonly quoteDatasource: QuoteDatasource){
-    super();
+
+  getQuote(id: string): Promise<QuoteEntity | null> {
+    return this.quoteDatasource.getQuote(id)
+  }
+
+  getQuotes(): Promise<QuoteEntity[]> {
+    return this.quoteDatasource.getQuotes()
+  }
+
+
+  findByQuoteNumber({ quoteNumber }: { quoteNumber: number; }): Promise<QuoteEntity | null> {
+    return this.quoteDatasource.findByQuoteNumber({ quoteNumber })
   }
 
   createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity> {

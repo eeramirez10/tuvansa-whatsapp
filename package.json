@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.5",
     "@types/nodemailer": "^6.4.17",
@@ -22,11 +23,13 @@
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "env-var": "^7.5.0",
     "express": "^4.21.2",
     "nodemailer": "^6.10.0",
     "openai": "^4.85.4",
-    "twilio": "^5.4.5"
+    "twilio": "^5.4.5",
+    "uuid": "^11.1.0"
   }
 }

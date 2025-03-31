@@ -86,7 +86,7 @@ export class UserCuestionUseCase {
 
               await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote.customerId)
 
-
+            
 
               return {
                 tool_call_id: action.id,
@@ -146,8 +146,10 @@ export class UserCuestionUseCase {
           to: [
             "eeramirez@tuvansa.com.mx",
             "gbarranco@tuvansa.com.mx",
+            "mavalos@tuvansa.com.mx",
+            "rgrinberg@tuvansa.com.mx"
           ],
-          subject: "Nueva cotización desde WhatsApp Tuvansa",
+          subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
           htmlBody
         }).then(() => {
           console.log('Correo enviado correctamente')
