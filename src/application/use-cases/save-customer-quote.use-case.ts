@@ -14,6 +14,7 @@ interface Options {
   phone: string
   location: string
   items: Item[]
+  fileKey?: string
 }
 
 
@@ -29,7 +30,9 @@ export class SaveCustomerQuoteUseCase {
       email,
       phone,
       location,
-      items
+      items = [],
+      fileKey
+      
     } = options
 
     const createCustomer = await new CreateCustomerUseCase(this.customerRepository).execute({
@@ -40,12 +43,13 @@ export class SaveCustomerQuoteUseCase {
       location,
     })
 
-    const newQuote = await new SaveQuoteUseCase(this.quoteRepository).execute({ customerId: createCustomer.id })
+    const newQuote = await new SaveQuoteUseCase(this.quoteRepository).execute({ customerId: createCustomer.id, fileKey })
 
-
+    
 
     for (let item of items) {
 
+      if(items.length === 0) break
 
       const addItems = await new AddQuoteItemsUseCase(this.quoteRepository).execute({
         price: 0,

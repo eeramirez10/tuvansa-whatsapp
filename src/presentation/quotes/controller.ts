@@ -3,6 +3,8 @@ import { QuoteRepository } from '../../domain/repositories/quote.repository';
 import { GetQuotesUseCase } from '../../application/use-cases/quotes/get-quotes.use-case';
 import { GetQuoteById } from '../../application/use-cases/quotes/get-quote-by-id.use-case';
 import { GetTodoDto } from '../../domain/dtos/quotes/get-todo.dto';
+import { UpdateQuoteItemDto } from '../../domain/dtos/quotes/update-quote-item.dto';
+import { UpdateQuoteItemUseCase } from '../../application/use-cases/quotes/update-quote-item.use-case';
 
 
 export class QuotesController {
@@ -47,6 +49,32 @@ export class QuotesController {
 
         res
           .json(quote)
+      })
+      .catch((e) => {
+        console.log(e)
+        res
+          .status(500)
+          .json({ error: 'Hubo un error' })
+      })
+
+  }
+
+
+  updateQuote = (req: Request, res: Response) => {
+
+    const id = req.params.id
+
+    const [error, dto] = UpdateQuoteItemDto.execute(req.body)
+
+    if (error) {
+      res.status(401).json({ error })
+      return
+    }
+
+    new UpdateQuoteItemUseCase(this.quoteRepository)
+      .execute(id, dto)
+      .then((data) => {
+        res.json(data)
       })
       .catch((e) => {
         console.log(e)

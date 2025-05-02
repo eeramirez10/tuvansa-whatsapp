@@ -8,6 +8,20 @@ import { MessageService } from '../../domain/services/message.service';
 import { LanguageModelService } from "../../domain/services/language-model.service";
 
 
+import extname from 'ext-name'
+import path from "path";
+import url from "url";
+import { FileStorageService } from '../../domain/services/file-storage.service';
+import { SaveMediaFileUseCase } from "../../application/use-cases/file-storage/save-media-file.use-case";
+
+
+enum Message {
+  document,
+  text
+}
+
+const ACCEPTED_FORMATS = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/pdf']
+
 
 export class WhatsAppController {
 
@@ -17,7 +31,8 @@ export class WhatsAppController {
     private chatThreadRepository: ChatThreadRepository,
     private quoteRepository: QuoteRepository,
     private customerRepository: CustomerRepository,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private fileStorageService: FileStorageService
 
   ) {
 
@@ -29,7 +44,7 @@ export class WhatsAppController {
     const payload = req.body
 
     const {
-
+      MediaContentType0,
       SmsMessageSid,
       NumMedia,
       ProfileName,
@@ -44,6 +59,7 @@ export class WhatsAppController {
       MessageSid,
       AccountSid,
       From,
+      MediaUrl0,
       ApiVersion,
     } = payload;
 
@@ -51,18 +67,103 @@ export class WhatsAppController {
 
     try {
 
-      const userQuestion = await new UserCuestionUseCase(
-        this.openAIService,
-        this.chatThreadRepository,
-        this.quoteRepository,
-        this.customerRepository,
-        this.emailService
-      ).execute({ phone: WaId, question: Body })
+      if (MessageType === 'text') {
 
-      const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+        const userQuestion = await new UserCuestionUseCase(
+          this.openAIService,
+          this.chatThreadRepository,
+          this.quoteRepository,
+          this.customerRepository,
+          this.emailService,
+          this.fileStorageService
+        ).execute({ phone: WaId, question: Body })
+
+        const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+
+        await this.messageService.createWhatsAppMessage({
+          body: asistantResponse.content,
+          to: WaId
+        })
+
+
+        return res.status(202).send('Accepted')
+
+      }
+
+      if (MessageType === 'document') {
+
+
+        if (!ACCEPTED_FORMATS.includes(MediaContentType0)) {
+
+          await this.messageService.createWhatsAppMessage({
+            body: ['Por seguridad no puedo aceptar ese tipo de archivo, solo archivos con extension pdf o excel'],
+            to: WaId
+          })
+
+
+          return res.status(415).send('Unsupported Media Type')
+
+
+        }
+
+
+
+        const mediaUrl = MediaUrl0
+        const contentType = MediaContentType0
+        const extension = extname.mime(contentType)[0].ext
+        const mediaSid = path.basename(url.parse(mediaUrl).pathname);
+        const filename = `${mediaSid}.${extension}`;
+
+
+
+        // await this.messageService.saveFiles({
+        //   mediaUrl,
+        //   MessageSid,
+        //   mediaSid,
+        //   filename,
+        // })
+
+
+        const file = await this.messageService.getFileFromUrl(mediaUrl)
+        await this.messageService.deleteFileFromApi({ MessageSid, mediaSid })
+
+        const fileUrl = await new SaveMediaFileUseCase(this.fileStorageService)
+          .execute(file, filename)
+
+        const fileStream = await this.fileStorageService.getFileStream(filename)
+
+        console.log({ fileStream })
+
+
+        const messaggeUploadFile = `archivo_adjuntado\nfile_key:${filename})`
+
+
+
+        const userQuestion = await new UserCuestionUseCase(
+          this.openAIService,
+          this.chatThreadRepository,
+          this.quoteRepository,
+          this.customerRepository,
+          this.emailService,
+          this.fileStorageService
+        ).execute({ phone: WaId, question: messaggeUploadFile })
+
+        const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+
+        await this.messageService.createWhatsAppMessage({
+          body: asistantResponse.content,
+          to: WaId
+        })
+
+
+
+        return res.status(202).send('Accepted')
+
+      }
+
 
       await this.messageService.createWhatsAppMessage({
-        body: asistantResponse.content,
+        body: ['Por seguridad no puedo aceptar ese tipo de archivo, solo puedo aceptar pdf o excel'],
         to: WaId
       })
 
@@ -70,11 +171,14 @@ export class WhatsAppController {
       res.status(202).send('Accepted')
 
 
-
     } catch (error) {
       console.log(error)
 
-      res.status(500).json({ error: 'Ocurrio un error' })
+      res
+        .status(500)
+        .json({
+          error: 'Ocurrio un error'
+        })
     }
 
 
@@ -101,6 +205,18 @@ export class WhatsAppController {
 
 
   }
+
+
+
+
+  // private deleteMediaItem(mediaItem) {
+  //   const client = getTwilioClient();
+
+  //   return client
+  //     .api.accounts(twilioAccountSid)
+  //     .messages(mediaItem.MessageSid)
+  //     .media(mediaItem.mediaSid).remove();
+  // }
 
 
 

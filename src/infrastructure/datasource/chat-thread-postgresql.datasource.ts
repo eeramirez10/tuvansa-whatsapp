@@ -14,23 +14,31 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
   async getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null> {
     return await prismaClient.chatThread.findFirst({
-      where:{
+      where: {
         id: threadId
       },
-      include:{
+      include: {
         messages: {
-          orderBy:{
+          orderBy: {
             createdAt: 'asc'
           }
         }
-        
+
       }
     })
   }
 
 
   async getThreads(): Promise<ChatThreadEntity[]> {
-    return prismaClient.chatThread.findMany({ orderBy:{ createdAt: 'desc'}})
+    return prismaClient.chatThread.findMany({
+      orderBy: {
+
+        lastInteraction: {
+          sort: 'desc',
+          nulls: 'last'
+        }
+      }
+    })
   }
 
 
@@ -39,7 +47,7 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
     const customer = await prismaClient.customer.findUnique({ where: { id: customerId } })
 
-    if(!customer){
+    if (!customer) {
       console.error('Cliente no encontrado:', customerId);
       throw new Error(`Cliente no existe con el id: ${customerId}`);
     }
@@ -154,6 +162,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
   }
 
-  
+
 
 }

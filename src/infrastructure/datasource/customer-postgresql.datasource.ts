@@ -13,6 +13,9 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
   async getCustomers(): Promise<CustomerEntity[]> {
     return await prismaClient.customer.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      },
       include: {
         quotes: true
       }

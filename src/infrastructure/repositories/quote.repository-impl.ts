@@ -4,6 +4,7 @@ import { QuoteRepository } from "../../domain/repositories/quote.repository";
 import { QuoteDatasource } from '../../domain/datasource/quote.datasource';
 import { QuoteEntity } from "../../domain/entities/quote.entity";
 import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
+import { UpdateQuoteItemDto } from "../../domain/dtos/quotes/update-quote-item.dto";
 
 
 export class QuoteRepositoryImpl extends QuoteRepository {
@@ -13,6 +14,12 @@ export class QuoteRepositoryImpl extends QuoteRepository {
   constructor(private readonly quoteDatasource: QuoteDatasource) {
     super();
   }
+
+
+  updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity> {
+    return this.quoteDatasource.updateQuoteItem(id, updateQuoteItemDto)
+  }
+
 
 
   getQuote(id: string): Promise<QuoteEntity | null> {

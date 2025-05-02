@@ -15,6 +15,7 @@ export interface ExtractedData {
   phone: string
   location: string
   items: Item[]
+  file_key?: string
 }
 
 

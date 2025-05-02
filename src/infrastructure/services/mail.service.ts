@@ -2,12 +2,21 @@
 import nodemailer from 'nodemailer'
 import { QuoteEntity } from '../../domain/entities/quote.entity';
 import { envs } from '../../config/envs';
+import { Readable } from 'node:stream';
+
 
 
 export interface SendMailOptions {
   to: string | string[];
   subject: string;
   htmlBody: string;
+  attachments?: Attachment[]
+}
+
+interface Attachment {
+  filename: string
+  path?: string
+  content?: string | Buffer | Readable | undefined;
 }
 
 
@@ -28,7 +37,7 @@ export class EmailService {
 
   async sendEmail(options: SendMailOptions) {
 
-    const { to, subject, htmlBody } = options;
+    const { to, subject, htmlBody, attachments } = options;
 
 
     const info = await this.transporter.sendMail({
@@ -36,6 +45,7 @@ export class EmailService {
       to, // list of receivers
       subject: subject, // Subject line
       html: htmlBody,
+      attachments
     })
 
     console.log("Message sent: %s", info.messageId);

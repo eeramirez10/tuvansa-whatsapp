@@ -17,6 +17,7 @@ export class QuotesRoutes {
 
     router.get('/', constroller.getQuotes)
     router.get('/:id', constroller.getQuote)
+    router.put('/item/:id', constroller.updateQuote)
 
     return router
   }

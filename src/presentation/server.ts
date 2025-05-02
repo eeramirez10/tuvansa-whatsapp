@@ -33,6 +33,8 @@ export class Server {
 
     //routes
 
+    console.log(process.env.NODE_ENV)
+
     this.app.use(this.routes)
 
     this.app.listen(this.port,HOST, () => {

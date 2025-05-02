@@ -9,9 +9,16 @@ import { EmailService } from '../../../infrastructure/services/mail.service';
 import { UpdateCustomerUseCase } from "../update-customer.use-case";
 import { SaveHistoryChatUseCase } from "../save-history-chat.use-case";
 import { LanguageModelService } from "../../../domain/services/language-model.service";
+import { QuoteEntity } from "../../../domain/entities/quote.entity";
+import { FileStorageService } from '../../../domain/services/file-storage.service';
 
 
 
+interface Options {
+
+  phone: string,
+  question: string
+}
 
 
 export class UserCuestionUseCase {
@@ -21,13 +28,17 @@ export class UserCuestionUseCase {
     private readonly chatThreadRepository: ChatThreadRepository,
     private readonly quoteRepository: QuoteRepository,
     private readonly customerRepository: CustomerRepository,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
+    private readonly fileStorageService: FileStorageService
 
   ) {
 
   }
 
-  async execute({ phone, question }: { phone: string, question: string }) {
+  async execute(options: Options) {
+    const { phone, question } = options
+
+
 
     const threadId = await new SaveThreadUseCase(this.openaiService, this.chatThreadRepository).execute({ phone })
 
@@ -36,7 +47,9 @@ export class UserCuestionUseCase {
 
     const run = await this.openaiService.createRun({ threadId })
 
-    let newCustomerQuote = null;
+    let newCustomerQuote: QuoteEntity | null;
+
+
 
 
     while (true) {
@@ -53,6 +66,8 @@ export class UserCuestionUseCase {
 
         const saveCustomerQuote = new SaveCustomerQuoteUseCase(this.quoteRepository, this.customerRepository);
 
+        console.log({ requiredAction })
+
         const tool_outputs = await Promise.all(
           requiredAction.map(async (action) => {
             const functionName = action.function.name;
@@ -68,7 +83,8 @@ export class UserCuestionUseCase {
                 email,
                 phone,
                 location,
-                items
+                items = [],
+                file_key
               } = clientInfo;
 
               newCustomerQuote = await saveCustomerQuote
@@ -78,15 +94,14 @@ export class UserCuestionUseCase {
                   email,
                   phone,
                   location,
-                  items
+                  items,
+                  fileKey: file_key
                 });
 
               console.log({ newCustomerQuote })
               console.log({ threadId })
 
-              await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote.customerId)
-
-            
+              await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote!.customerId)
 
               return {
                 tool_call_id: action.id,
@@ -136,10 +151,16 @@ export class UserCuestionUseCase {
     if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
 
     if (newCustomerQuote) {
+      let fileStream;
+      
+      if (newCustomerQuote.fileKey) fileStream = await this.fileStorageService.getFileStream(newCustomerQuote.fileKey)
 
       const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomerQuote!.quoteNumber });
 
       const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
+
+     
+
 
       new SendMailUseCase(this.emailService)
         .execute({
@@ -150,7 +171,13 @@ export class UserCuestionUseCase {
             "rgrinberg@tuvansa.com.mx"
           ],
           subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
-          htmlBody
+          htmlBody: fileStream ? null : htmlBody,
+          attachments: fileStream ? [
+            {
+              filename: newCustomerQuote.fileKey,
+              content: fileStream.body
+            }
+          ] : null
         }).then(() => {
           console.log('Correo enviado correctamente')
         }).catch((e) => {

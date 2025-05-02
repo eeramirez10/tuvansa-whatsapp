@@ -13,6 +13,75 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum QuoteStatus {
+  PENDING
+  QUOTED
+  ORDERED
+  // Agrega más si lo requieres
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  // Agrega más roles si los necesitas, por ejemplo:
+  // SUPERADMIN
+  // MANAGER
+  // ...
+}
+
+model Branch {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  address   String?   // si quieres almacenar la dirección de la sucursal
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relación inversa: una sucursal puede tener muchos usuarios
+  users     User[]
+}
+
+
+
+model User {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  lastname   String
+  username   String      @unique
+  email      String      @unique
+  phone      String?     @unique
+  password   String
+  role       UserRole      @default(USER)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  quoteHistories QuoteHistory[]
+
+  branchId String? @db.Uuid
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade) 
+}
+
+model QuoteHistory {
+  id         String      @id @default(uuid()) @db.Uuid
+  oldStatus  QuoteStatus
+  newStatus  QuoteStatus
+  changedAt  DateTime    @default(now())
+
+  // Relación con el usuario que hizo el cambio
+  userId  String    @db.Uuid
+  user    User      @relation(fields: [userId], references: [id])
+
+  // Relación con la cotización modificada
+  quoteId String    @db.Uuid
+  quote   Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // Campo JSON opcional que guarda un "snapshot" parcial o completo de la cotización
+  snapshot Json
+}
+
+
+
+
 model Customer {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -34,6 +103,12 @@ model Quote {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   items QuoteItem[] // Relación con los items de la cotización
+
+  status      QuoteStatus @default(PENDING)
+
+  fileKey String? 
+
+  quoteHistory QuoteHistory[]
 }
 
 model QuoteItem {
@@ -58,7 +133,7 @@ model ChatThread {
   clientPhoneNumber String
   status            String    @default("ACTIVE")
   createdAt         DateTime  @default(now())
-  lastInteraction   DateTime?
+  lastInteraction   DateTime?  @default(now())
   location          String?
 
   // Relación con Customer (opcional)

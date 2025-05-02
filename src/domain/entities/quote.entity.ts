@@ -8,17 +8,18 @@ interface QuoteOptions {
   quoteNumber: number;
   customerId: string;   
   items: QuoteItemEntity[];
-  customer?: CustomerEntity;       // O un "Customer" si quieres anidarlo
-       // Lista de items
+  customer?: CustomerEntity;       
+  fileKey?: string
 }
 
-export class QuoteEntity {
+export class QuoteEntity  {
   readonly id: string;
   readonly createdAt: Date;
   readonly quoteNumber: number;
   readonly customerId: string;
   readonly items: QuoteItemEntity[];
   readonly customer?: CustomerEntity;
+  readonly fileKey?: string
 
   constructor(options: QuoteOptions) {
     this.id = options.id;

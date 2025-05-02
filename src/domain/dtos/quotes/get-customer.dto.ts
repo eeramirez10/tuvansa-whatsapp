@@ -6,7 +6,7 @@ interface Option {
 
 export class GetCustomerDto {
 
-  private readonly id: string
+  public readonly id: string
 
   constructor(option: Option) {
 

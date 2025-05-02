@@ -4,12 +4,22 @@ import { AddQuoteItemsDto } from "../../domain/dtos/add-quote-items.dto";
 import { CreateQuoteDto } from "../../domain/dtos/create-quote.dto";
 import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
 import { QuoteEntity } from "../../domain/entities/quote.entity";
+import { UpdateQuoteItemDto } from "../../domain/dtos/quotes/update-quote-item.dto";
 
 
 const prismaClient = new PrismaClient()
 
 
 export class QuotePostgresqlDatasource extends QuoteDatasource {
+
+
+
+  async updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity> {
+    return await prismaClient.quoteItem.update({
+      where: { id },
+      data: updateQuoteItemDto
+    })
+  }
 
 
   async getQuote(id: string): Promise<QuoteEntity | null> {
@@ -20,7 +30,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         where: {
           id
         },
-        include:{
+        include: {
           customer: true,
           items: true,
         }
@@ -42,6 +52,9 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     try {
 
       return await prismaClient.quote.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        },
         include: {
           customer: true,
           items: true,
@@ -111,9 +124,11 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
     return res.value;
   }
+
+
   async createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity> {
 
-    const { customerId } = createQuoteDto
+    const { customerId, fileKey } = createQuoteDto
 
 
     try {
@@ -123,7 +138,8 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
       return await prismaClient.quote.create({
         data: {
           quoteNumber,
-          customerId
+          customerId,
+          fileKey
         },
         include: {
           customer: true,
@@ -166,6 +182,9 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     }
 
   }
+
+
+
 
 
 

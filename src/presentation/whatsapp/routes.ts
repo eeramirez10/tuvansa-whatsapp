@@ -10,6 +10,7 @@ import { OpenAIService } from "../../infrastructure/services/openai.service";
 import { EmailService } from "../../infrastructure/services/mail.service";
 import { MessageService } from "../../domain/services/message.service";
 import { TwilioService } from "../../infrastructure/services/twilio.service";
+import { S3FileStorageService } from '../../infrastructure/services/s3-file-storage.service';
 
 
 
@@ -27,6 +28,7 @@ export class WhatsAppRoutes {
     const quoteRepositoryImpl = new   QuoteRepositoryImpl(quoteDataSource)
     const customerRepositoryImpl = new   CustomerRepositoryImpl(customerDatasource)
     const openAiService = new OpenAIService()
+    const s3FileStorageService = new S3FileStorageService()
 
     const whastAppController = new WhatsAppController(
       openAiService, 
@@ -34,7 +36,8 @@ export class WhatsAppRoutes {
       chatThreadRepositoryImpl,
       quoteRepositoryImpl,
       customerRepositoryImpl,
-      new TwilioService()
+      new TwilioService(),
+      s3FileStorageService
     )
     
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))

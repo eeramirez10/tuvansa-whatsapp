@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "tsnd --respawn --clear src/app.ts",
+    "dev": " NODE_ENV=deveplopment tsnd --respawn --clear src/app.ts",
     "build": "rm -rf ./dist && tsc",
     "start": "npm run build && node dist/app.js"
   },
@@ -14,6 +14,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.5",
     "@types/nodemailer": "^6.4.17",
     "prisma": "^6.4.1",
@@ -22,14 +23,22 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/lib-storage": "^3.787.0",
+    "@aws-sdk/s3-request-presigner": "^3.796.0",
     "@prisma/client": "^6.4.1",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "env-var": "^7.5.0",
     "express": "^4.21.2",
+    "ext-name": "^5.0.0",
+    "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.10.0",
     "openai": "^4.85.4",
     "twilio": "^5.4.5",
+    "url": "^0.11.4",
     "uuid": "^11.1.0"
   }
 }
