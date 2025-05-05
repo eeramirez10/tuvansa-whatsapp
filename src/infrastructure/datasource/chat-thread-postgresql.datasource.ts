@@ -142,6 +142,8 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
     try {
 
+      await this.updateLastInteraction(addMessageOptions.chatThreadId)
+
       return await prismaClient.message.create({
         data: {
           role: addMessageOptions.role,
@@ -149,6 +151,8 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
           chatThreadId: addMessageOptions.chatThreadId
         }
       })
+
+
 
     } catch (error) {
 
@@ -160,6 +164,18 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
       prismaClient.$disconnect()
     }
 
+  }
+
+  private async updateLastInteraction(threadId:string){
+
+    await  prismaClient.chatThread.update({
+      where:{
+        id: threadId
+      },
+      data:{
+        lastInteraction: new Date()
+      }
+    })
   }
 
 
