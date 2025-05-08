@@ -58,7 +58,7 @@ export class EmailService {
 
 
     // Generamos las filas de la tabla para cada artículo
-    const itemsHTML = items.map(item => `
+    const itemsHTML = items.length > 0 ?  items.map(item => `
       <tr>
         <td>${item.description}</td>
         <td>${item.ean}</td>
@@ -66,18 +66,11 @@ export class EmailService {
         <td>${item.quantity}</td>
         <td>${item.um}</td>
       </tr>
-    `).join('')
+    `).join('') : null
 
-    // Armamos el cuerpo completo en HTML
-    const htmlBody = `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h1>Datos del Cliente</h1>
-        <p><strong>Nombre:</strong> ${customer?.name} ${customer?.lastname}</p>
-        <p><strong>Email:</strong> ${customer?.email}</p>
-        <p><strong>Teléfono:</strong> ${customer?.phone}</p>
-        <p><strong>Ubicación:</strong> ${customer?.location}</p>
-  
-        <h2>Artículos solicitados</h2>
+
+    const quoteItems = itemsHTML ?  `
+      <h2>Artículos solicitados</h2>
         <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
           <thead>
             <tr>
@@ -91,7 +84,22 @@ export class EmailService {
           <tbody>
             ${itemsHTML}
           </tbody>
-        </table>
+        </table> 
+    
+    
+    ` : '';
+
+    // Armamos el cuerpo completo en HTML
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h1>Datos del Cliente</h1>
+        <p><strong>Nombre:</strong> ${customer?.name} ${customer?.lastname}</p>
+        <p><strong>Email:</strong> ${customer?.email}</p>
+        <p><strong>Teléfono:</strong> ${customer?.phone}</p>
+        <p><strong>Ubicación:</strong> ${customer?.location}</p>
+
+        ${quoteItems}
+  
       </div>
     `
     return htmlBody

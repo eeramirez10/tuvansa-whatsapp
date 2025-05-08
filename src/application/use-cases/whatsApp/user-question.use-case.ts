@@ -168,10 +168,11 @@ export class UserCuestionUseCase {
             "eeramirez@tuvansa.com.mx",
             "gbarranco@tuvansa.com.mx",
             "mavalos@tuvansa.com.mx",
-            "rgrinberg@tuvansa.com.mx"
+            "rgrinberg@tuvansa.com.mx",
+            "lquintero@tuvansa.com.mx"
           ],
           subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
-          htmlBody: fileStream ? null : htmlBody,
+          htmlBody: htmlBody,
           attachments: fileStream ? [
             {
               filename: newCustomerQuote.fileKey,

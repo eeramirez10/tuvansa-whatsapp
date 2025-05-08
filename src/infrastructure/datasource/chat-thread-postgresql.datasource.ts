@@ -23,7 +23,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
             createdAt: 'asc'
           }
         }
-
       }
     })
   }
