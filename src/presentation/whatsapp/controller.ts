@@ -69,21 +69,22 @@ export class WhatsAppController {
 
       if (MessageType === 'text') {
 
-        const userQuestion = await new UserCuestionUseCase(
+        await new UserCuestionUseCase(
           this.openAIService,
           this.chatThreadRepository,
           this.quoteRepository,
           this.customerRepository,
           this.emailService,
-          this.fileStorageService
+          this.fileStorageService,
+          this.messageService
         ).execute({ phone: WaId, question: Body })
 
-        const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+        // const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
 
-        await this.messageService.createWhatsAppMessage({
-          body: asistantResponse.content,
-          to: WaId
-        })
+        // await this.messageService.createWhatsAppMessage({
+        //   body: asistantResponse.content,
+        //   to: WaId
+        // })
 
 
         return res.status(202).send('Accepted')
@@ -115,45 +116,31 @@ export class WhatsAppController {
         const filename = `${mediaSid}.${extension}`;
 
 
-
-        // await this.messageService.saveFiles({
-        //   mediaUrl,
-        //   MessageSid,
-        //   mediaSid,
-        //   filename,
-        // })
-
-
         const file = await this.messageService.getFileFromUrl(mediaUrl)
         await this.messageService.deleteFileFromApi({ MessageSid, mediaSid })
 
-        const fileUrl = await new SaveMediaFileUseCase(this.fileStorageService)
+        await new SaveMediaFileUseCase(this.fileStorageService)
           .execute(file, filename)
-
-        const fileStream = await this.fileStorageService.getFileStream(filename)
-
-        console.log({ fileStream })
-
 
         const messaggeUploadFile = `archivo_adjuntado\nfile_key:${filename})`
 
-
-
-        const userQuestion = await new UserCuestionUseCase(
+        await new UserCuestionUseCase(
           this.openAIService,
           this.chatThreadRepository,
           this.quoteRepository,
           this.customerRepository,
           this.emailService,
-          this.fileStorageService
+          this.fileStorageService,
+          this.messageService
         ).execute({ phone: WaId, question: messaggeUploadFile })
 
-        const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+        // const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
+        // await this.messageService.createWhatsAppMessage({
+        //   body: asistantResponse.content,
+        //   to: WaId
+        // })
 
-        await this.messageService.createWhatsAppMessage({
-          body: asistantResponse.content,
-          to: WaId
-        })
+
 
 
 

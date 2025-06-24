@@ -27,7 +27,7 @@ export class WhatsAppRoutes {
     const chatThreadRepositoryImpl = new ChatThreadRepositoryImpl(chatThreadDataSource)
     const quoteRepositoryImpl = new   QuoteRepositoryImpl(quoteDataSource)
     const customerRepositoryImpl = new   CustomerRepositoryImpl(customerDatasource)
-    const openAiService = new OpenAIService()
+    const openAiService = new OpenAIService(new TwilioService())
     const s3FileStorageService = new S3FileStorageService()
 
     const whastAppController = new WhatsAppController(

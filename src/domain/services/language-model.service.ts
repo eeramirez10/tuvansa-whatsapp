@@ -28,6 +28,16 @@ export abstract class LanguageModelService  {
     content: any[];
   }[]>
 
+  abstract  streamMessageToWhatsApp(options: {
+    threadId: string;
+    question: any[];
+    to: string;
+    assistantId?: string;  
+    chunkSize?: number;
+  })
+
+  abstract startRunStream(opts: { threadId: string; assistantId?: string })
+
 
 
 

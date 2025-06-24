@@ -1,6 +1,7 @@
 interface SendWhatsAppMessageOptions {
   body: any[]
   to: string
+  mediaUrl?: string[]
 }
 
 export interface SaveFilesDto {

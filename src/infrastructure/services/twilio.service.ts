@@ -18,6 +18,7 @@ import { Buffer } from "node:buffer";
 interface SendWhatsAppMessageOptions {
   body: any[]
   to: string
+  mediaUrl?: string []
 }
 
 export class TwilioService implements MessageService {
@@ -96,12 +97,15 @@ export class TwilioService implements MessageService {
 
   async createWhatsAppMessage(options: SendWhatsAppMessageOptions) {
 
-    const { body, to } = options
+    const { body, to, mediaUrl } = options
+
+    console.log({mediaUrl})
 
     const message = await this.client.messages.create({
       body: body.toString(),
       to: `whatsapp:+${to}`, // Text your number
       from: 'whatsapp:+5215596603295', // From a valid Twilio number
+      mediaUrl:mediaUrl ?? undefined
     })
 
 
