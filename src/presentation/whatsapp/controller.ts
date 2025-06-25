@@ -97,7 +97,7 @@ export class WhatsAppController {
         if (!ACCEPTED_FORMATS.includes(MediaContentType0)) {
 
           await this.messageService.createWhatsAppMessage({
-            body: ['Por seguridad no puedo aceptar ese tipo de archivo, solo archivos con extension pdf o excel'],
+            body: 'Por seguridad no puedo aceptar ese tipo de archivo, solo archivos con extension pdf o excel',
             to: WaId
           })
 
@@ -115,9 +115,10 @@ export class WhatsAppController {
         const mediaSid = path.basename(url.parse(mediaUrl).pathname);
         const filename = `${mediaSid}.${extension}`;
 
+        
 
         const file = await this.messageService.getFileFromUrl(mediaUrl)
-        await this.messageService.deleteFileFromApi({ MessageSid, mediaSid })
+        // await this.messageService.deleteFileFromApi({ MessageSid, mediaSid }) /// revisar
 
         await new SaveMediaFileUseCase(this.fileStorageService)
           .execute(file, filename)
@@ -150,7 +151,7 @@ export class WhatsAppController {
 
 
       await this.messageService.createWhatsAppMessage({
-        body: ['Por seguridad no puedo aceptar ese tipo de archivo, solo puedo aceptar pdf o excel'],
+        body: 'Por seguridad no puedo aceptar ese tipo de archivo, solo puedo aceptar pdf o excel',
         to: WaId
       })
 

@@ -131,7 +131,7 @@ export class OpenAIService implements LanguageModelService {
           if (toSend) {
             await this.twilioService.createWhatsAppMessage({
               to,
-              body: [toSend]
+              body: toSend
             });
           }
           // Quitamos lo ya enviado + el '\n'
@@ -149,7 +149,7 @@ export class OpenAIService implements LanguageModelService {
     if (remainder) {
       await this.twilioService.createWhatsAppMessage({
         to,
-        body: [remainder]
+        body: remainder
       });
     }
 

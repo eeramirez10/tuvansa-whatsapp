@@ -16,9 +16,11 @@ import { Buffer } from "node:buffer";
 
 
 interface SendWhatsAppMessageOptions {
-  body: any[]
+  body?: string
   to: string
   mediaUrl?: string []
+  contentSid?: string
+  contentVariables?: string
 }
 
 export class TwilioService implements MessageService {
@@ -44,11 +46,13 @@ export class TwilioService implements MessageService {
       .from(`${envs.TWILIO_ACCOUNT_SID}:${envs.TWILIO_AUTH_TOKEN}`)
       .toString('base64');
 
+      console.log({mediaUrl})
+
     const res = await fetch(mediaUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Basic ${token}`,
-        'Accept': 'application/json'
+        // 'Accept': 'application/json'
       }
     });
 
@@ -97,18 +101,22 @@ export class TwilioService implements MessageService {
 
   async createWhatsAppMessage(options: SendWhatsAppMessageOptions) {
 
-    const { body, to, mediaUrl } = options
+    const { body, to, mediaUrl, contentSid,  contentVariables} = options
 
-    console.log({mediaUrl})
+    
 
     const message = await this.client.messages.create({
-      body: body.toString(),
+      body: body,
       to: `whatsapp:+${to}`, // Text your number
       from: 'whatsapp:+5215596603295', // From a valid Twilio number
-      mediaUrl:mediaUrl ?? undefined
+      mediaUrl:mediaUrl,
+      forceDelivery: true,
+      contentSid,
+      contentVariables
+      
     })
 
-
+    
 
   }
 

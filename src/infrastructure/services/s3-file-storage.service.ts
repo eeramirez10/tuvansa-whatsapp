@@ -40,8 +40,8 @@ export class S3FileStorageService implements FileStorageService {
     const cmd = new GetObjectCommand({
       Bucket: envs.AWS_BUCKET_NAME,
       Key: key,
-      // ResponseContentDisposition: `inline; filename="${key}"`, 
-      // ResponseContentType:        'application/pdf',
+      ResponseContentDisposition: `inline; filename="${key}"`, 
+      ResponseContentType:        'application/pdf',
     });
     return await getSignedUrl(this.client, cmd, { expiresIn: expiresInSec });
   }
