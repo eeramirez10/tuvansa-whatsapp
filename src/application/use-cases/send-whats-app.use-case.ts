@@ -2,7 +2,7 @@ import { MessageService } from '../../domain/services/message.service';
 
 
 interface Options {
-  body: any []
+  body: string
   to: string
 }
 
