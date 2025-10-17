@@ -5,9 +5,14 @@ import { QuoteDatasource } from '../../domain/datasource/quote.datasource';
 import { QuoteEntity } from "../../domain/entities/quote.entity";
 import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
 import { UpdateQuoteItemDto } from "../../domain/dtos/quotes/update-quote-item.dto";
+import { GetQuotesDto } from "../../domain/dtos/quotes/get-quotes.dto";
+import { UpdateQuoteDto } from "../../domain/dtos/quotes/update-quote.dto";
+import { PaginationResult } from "../../domain/entities/pagination-result";
 
 
 export class QuoteRepositoryImpl extends QuoteRepository {
+
+
 
 
 
@@ -26,8 +31,8 @@ export class QuoteRepositoryImpl extends QuoteRepository {
     return this.quoteDatasource.getQuote(id)
   }
 
-  getQuotes(): Promise<QuoteEntity[]> {
-    return this.quoteDatasource.getQuotes()
+  getQuotes(getQuotesDto: GetQuotesDto): Promise<PaginationResult<QuoteEntity>> {
+    return this.quoteDatasource.getQuotes(getQuotesDto)
   }
 
 
@@ -42,6 +47,9 @@ export class QuoteRepositoryImpl extends QuoteRepository {
     return this.quoteDatasource.addQuoteItems(addQuoteItems)
   }
 
+  updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity> {
+    return this.quoteDatasource.updateQuote(id, updateQuoteDto)
+  }
 
 
 }

@@ -4,6 +4,8 @@ import { ChatThreadRepository } from "../../domain/repositories/chat-thread.repo
 import { ChatThreadDatasource } from '../../domain/datasource/chat-thread.datasource';
 import { ChatThreadEntity } from "../../domain/entities/chat-thread.entity";
 import { MessageEntity } from "../../domain/entities/message.entity";
+import { GetThreadsDto } from "../../domain/dtos/threads/get-threads.dto";
+import { GetMessagesDto } from "../../domain/dtos/threads/get-messages.dto";
 
 
 
@@ -11,8 +13,8 @@ import { MessageEntity } from "../../domain/entities/message.entity";
 export class ChatThreadRepositoryImpl extends ChatThreadRepository {
 
 
-  getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null> {
-    return this.chatThreadDatasource.getMessagesByThread(threadId)
+  getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null> {
+    return this.chatThreadDatasource.getMessagesByThread(threadId, getMessageDto)
   }
 
 
@@ -20,8 +22,8 @@ export class ChatThreadRepositoryImpl extends ChatThreadRepository {
   constructor(private readonly chatThreadDatasource: ChatThreadDatasource) {
     super();
   }
-  getThreads(): Promise<ChatThreadEntity[]> {
-    return this.chatThreadDatasource.getThreads()
+  getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]> {
+    return this.chatThreadDatasource.getThreads(getThreadsDto)
   }
 
 

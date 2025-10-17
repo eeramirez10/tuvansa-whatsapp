@@ -12,6 +12,7 @@ import { QuoteEntity } from "../../../domain/entities/quote.entity";
 import { FileStorageService } from '../../../domain/services/file-storage.service';
 import { MessageService } from "../../../domain/services/message.service";
 import { SendMailUseCase } from "../send-mail.use-case";
+import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
 
 
 interface Contacts {
@@ -84,6 +85,8 @@ export class UserCuestionUseCase {
       this.chatThreadRepository
     ).execute({ phone });
 
+
+
     // 2) Enviamos el mensaje del usuario
     await this.openaiService.createMessage({ threadId, question });
 
@@ -154,22 +157,22 @@ export class UserCuestionUseCase {
 
         const requiredAction = runstatus.required_action?.submit_tool_outputs.tool_calls;
 
-        console.log({ requiredAction })
+        // console.log({ requiredAction })
 
         if (!requiredAction) break
 
         const saveCustomerQuote = new SaveCustomerQuoteUseCase(this.quoteRepository, this.customerRepository);
 
-        console.log({ requiredAction })
+        // console.log({ requiredAction })
 
         const tool_outputs = await Promise.all(
           requiredAction.map(async (action) => {
             const functionName = action.function.name;
-            console.log({ functionName });
+            // console.log({ functionName });
 
             if (functionName === 'extract_customer_info') {
               const clientInfo = JSON.parse(action.function.arguments) as ExtractedData;
-              console.log({ clientInfo });
+              // console.log({ clientInfo });
 
               const {
                 customer_name,
@@ -192,10 +195,16 @@ export class UserCuestionUseCase {
                   fileKey: file_key
                 });
 
-              console.log({ newCustomerQuote })
-              console.log({ threadId })
+              // console.log({ newCustomerQuote })
+              // console.log({ threadId })
 
-              await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote!.customerId)
+
+
+              const chatThread = await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote!.customerId)
+
+              const [err, updateQuoteDto] = UpdateQuoteDto.execute({ chatThreadId: chatThread.id })
+
+              await this.quoteRepository.updateQuote(newCustomerQuote.id, updateQuoteDto)
 
               return {
                 tool_call_id: action.id,
@@ -230,7 +239,7 @@ export class UserCuestionUseCase {
         await this.openaiService.submitToolOutputs(runstatus.thread_id, runstatus.id, tool_outputs)
 
 
-        console.log(tool_outputs[0]?.output);
+        // console.log(tool_outputs[0]?.output);
 
 
       }
@@ -257,7 +266,7 @@ export class UserCuestionUseCase {
 
     }
 
-    console.log({ fileUrl })
+    // console.log({ fileUrl })
 
     const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomerQuote!.quoteNumber });
 

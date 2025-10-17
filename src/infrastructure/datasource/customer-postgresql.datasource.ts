@@ -44,7 +44,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
     })
   }
   getById(customerId: string): Promise<CustomerEntity | null> {
-    console.log({ customerId })
+    // console.log({ customerId })
     return prismaClient.customer.findFirst({
       where: {
         id: customerId

@@ -44,8 +44,6 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
   async login(loginUserDto: LoginUserDto): Promise<UserEntity | null> {
     const { email, password } = loginUserDto
 
-
-
     const user = await prismaClient.user.findFirst({
       where: {
         email
@@ -59,12 +57,7 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
 
     if (!this.comparePassword(password, user.password)) throw CustomError.BadRequest('Incorrect Password')
 
-
     return user
-
-
-
-
   }
 
 
@@ -73,7 +66,7 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
 
     const { password, ...rest } = createUserDto
 
-    console.log(rest)
+    // console.log(rest)
 
     const existUser = await prismaClient.user.findUnique({ where: { email: rest.email } })
 

@@ -5,18 +5,29 @@ import { GetQuoteById } from '../../application/use-cases/quotes/get-quote-by-id
 import { GetTodoDto } from '../../domain/dtos/quotes/get-todo.dto';
 import { UpdateQuoteItemDto } from '../../domain/dtos/quotes/update-quote-item.dto';
 import { UpdateQuoteItemUseCase } from '../../application/use-cases/quotes/update-quote-item.use-case';
+import { GetQuotesDto } from '../../domain/dtos/quotes/get-quotes.dto';
+import { OpenAIService } from '../../infrastructure/services/openai.service';
+import { OpenAiFunctinsService } from '../../infrastructure/services/openai-functions.service';
 
 
 export class QuotesController {
 
-  constructor(private readonly quoteRepository: QuoteRepository) { }
+  constructor(private readonly quoteRepository: QuoteRepository, private readonly openAIService:OpenAiFunctinsService) { }
 
 
   getQuotes = (req: Request, res: Response, next: NextFunction) => {
 
 
-    new GetQuotesUseCase(this.quoteRepository)
-      .execute()
+    const [error, getQuotesDto] = GetQuotesDto.execute({ ...req.query })
+
+   
+    if (error) {
+      res.status(400).json({ error })
+      return
+    }
+
+    new GetQuotesUseCase(this.quoteRepository, this.openAIService)
+      .execute(getQuotesDto)
       .then((quotes) => {
 
         res.json(quotes)

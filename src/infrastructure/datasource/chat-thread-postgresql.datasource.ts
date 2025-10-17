@@ -4,6 +4,8 @@ import { AddMessageDto } from "../../domain/dtos/add-message.dto";
 import { CreateThreadDto } from "../../domain/dtos/create-thread.dto";
 import { ChatThreadEntity } from "../../domain/entities/chat-thread.entity";
 import { MessageEntity } from "../../domain/entities/message.entity";
+import { GetThreadsDto } from "../../domain/dtos/threads/get-threads.dto";
+import { GetMessagesDto } from "../../domain/dtos/threads/get-messages.dto";
 
 
 const prismaClient = new PrismaClient()
@@ -12,15 +14,24 @@ const prismaClient = new PrismaClient()
 export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
 
-  async getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null> {
+  async getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null> {
+
+    const { page, pageSize } = getMessageDto
+
+    const take = pageSize;
+    const skip = (page - 1) * pageSize
+
     return await prismaClient.chatThread.findFirst({
       where: {
         id: threadId
       },
       include: {
+        customer: true,
         messages: {
+          take,
+          skip,
           orderBy: {
-            createdAt: 'asc'
+            createdAt: 'desc'
           }
         }
       }
@@ -28,13 +39,33 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
   }
 
 
-  async getThreads(): Promise<ChatThreadEntity[]> {
+
+
+  async getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]> {
+
+    const { page, pageSize } = getThreadsDto
+
+    const take = pageSize;
+    const skip = (page - 1) * pageSize
+
     return prismaClient.chatThread.findMany({
+      take,
+      skip,
       orderBy: {
 
         lastInteraction: {
           sort: 'desc',
           nulls: 'last'
+        }
+      },
+      include: {
+        customer: true,
+
+        messages: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     })
@@ -70,6 +101,10 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
       return await prismaClient.chatThread.findFirst({
         where: {
           openAiThreadId: threadId
+        },
+        include: {
+          customer: true,
+          messages: true
         }
       })
 
@@ -165,13 +200,13 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
   }
 
-  private async updateLastInteraction(threadId:string){
+  private async updateLastInteraction(threadId: string) {
 
-    await  prismaClient.chatThread.update({
-      where:{
+    await prismaClient.chatThread.update({
+      where: {
         id: threadId
       },
-      data:{
+      data: {
         lastInteraction: new Date()
       }
     })

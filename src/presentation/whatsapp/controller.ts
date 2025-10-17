@@ -63,7 +63,7 @@ export class WhatsAppController {
       ApiVersion,
     } = payload;
 
-    console.log(payload)
+
 
     try {
 
@@ -107,7 +107,7 @@ export class WhatsAppController {
 
         }
 
-
+        
 
         const mediaUrl = MediaUrl0
         const contentType = MediaContentType0

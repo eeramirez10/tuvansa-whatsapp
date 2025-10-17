@@ -10,7 +10,7 @@ import { TwilioService } from './twilio.service';
 export class OpenAIService implements LanguageModelService {
 
   private openai = new OpenAI({ apiKey: envs.OPEN_API_KEY })
-  constructor(private readonly twilioService: TwilioService) {
+  constructor(private readonly twilioService?: TwilioService) {
   }
 
   // async createThread({ phone }: { phone: string }) {
@@ -54,7 +54,7 @@ export class OpenAIService implements LanguageModelService {
 
   async checkStatus(threadId: string, runId: string) {
     const runStatus = await this.openai.beta.threads.runs.retrieve(threadId, runId);
-    console.log({ status: runStatus.status });
+    // console.log({ status: runStatus.status });
     return runStatus;
   }
 
@@ -121,7 +121,7 @@ export class OpenAIService implements LanguageModelService {
       for (const part of deltaParts) {
         buffer += part.text.value;
 
-        console.log(buffer)
+        // console.log(buffer)
 
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
@@ -179,6 +179,8 @@ export class OpenAIService implements LanguageModelService {
 
     return { runId, stream: newStream };
   }
+
+
 
 
 

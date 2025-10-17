@@ -50,7 +50,7 @@ export class AuthController {
 
   registerUser = (req: Request, res: Response) => {
 
-    console.log(req.body)
+    // console.log(req.body)
 
     const [error, createUserDto] = CreateUserDto.execute(req.body)
 

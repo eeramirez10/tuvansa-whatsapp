@@ -3,6 +3,10 @@ import { CreateQuoteDto } from "../dtos/create-quote.dto";
 import { QuoteItemEntity } from "../entities/quote-item.entity";
 import { QuoteEntity } from "../entities/quote.entity";
 import { UpdateQuoteItemDto } from '../dtos/quotes/update-quote-item.dto';
+import { GetQuotesDto } from "../dtos/quotes/get-quotes.dto";
+import { Quote } from "@prisma/client";
+import { UpdateQuoteDto } from '../dtos/quotes/update-quote.dto';
+import { PaginationResult } from "../entities/pagination-result";
 
 
 
@@ -10,7 +14,7 @@ import { UpdateQuoteItemDto } from '../dtos/quotes/update-quote-item.dto';
 
 export abstract class QuoteDatasource {
 
-  abstract getQuotes(): Promise<QuoteEntity[]>
+  abstract getQuotes(etQuotesDto: GetQuotesDto): Promise<PaginationResult<QuoteEntity>>
 
   abstract createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity>
 
@@ -23,5 +27,6 @@ export abstract class QuoteDatasource {
   abstract getQuote(id: string): Promise<QuoteEntity | null>
 
   abstract updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity>
+  abstract updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity>
 
 }

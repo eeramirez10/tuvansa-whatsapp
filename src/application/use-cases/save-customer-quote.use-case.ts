@@ -15,6 +15,7 @@ interface Options {
   location: string
   items: Item[]
   fileKey?: string
+  threadId?:string
 }
 
 
@@ -31,7 +32,8 @@ export class SaveCustomerQuoteUseCase {
       phone,
       location,
       items = [],
-      fileKey
+      fileKey,
+      threadId
       
     } = options
 
@@ -43,7 +45,7 @@ export class SaveCustomerQuoteUseCase {
       location,
     })
 
-    const newQuote = await new SaveQuoteUseCase(this.quoteRepository).execute({ customerId: createCustomer.id, fileKey })
+    const newQuote = await new SaveQuoteUseCase(this.quoteRepository).execute({ customerId: createCustomer.id, fileKey, threadId })
 
     
 

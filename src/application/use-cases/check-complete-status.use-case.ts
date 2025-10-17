@@ -38,7 +38,7 @@ export class CheckCompleteStatusUseCase {
 
     const status = runStatus.status
 
-    console.log({ status })
+    // console.log({ status })
 
     const requiredAction = runStatus.required_action?.submit_tool_outputs.tool_calls
 
@@ -51,15 +51,15 @@ export class CheckCompleteStatusUseCase {
 
           const functionName = action.function.name
 
-          console.log({ functionName })
+          // console.log({ functionName })
 
           if (functionName === 'extract_customer_info') {
 
             const clientInfo = JSON.parse(action.function.arguments) as ExtractedData
 
-            console.log({ clientInfo })
+            // console.log({ clientInfo })
 
-            console.log(clientInfo.items[0])
+            // console.log(clientInfo.items[0])
             const {
 
               customer_name,
@@ -157,7 +157,7 @@ export class CheckCompleteStatusUseCase {
       await this.openai.beta.threads.runs.submitToolOutputs(threadId, runId, { tool_outputs })
 
 
-      console.log(tool_outputs[0].output)
+      // console.log(tool_outputs[0].output)
 
 
 

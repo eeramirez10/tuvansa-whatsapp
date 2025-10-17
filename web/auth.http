@@ -1,0 +1,13 @@
+### Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email":"eeramirez@tuvansa.com.mx",
+  "password":"Ag7348pp**"
+}
+
+
+### Renew token
+GET  http://localhost:3000/api/auth/renew
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJkNGQ0NWZjLTVmN2EtNGM5My1iNjI2LWJhYTNkYjEyMTgyNyIsImlhdCI6MTc2MDYzNjExNywiZXhwIjoxNzYwNjQzMzE3fQ.iyIqoZiCv_GIFkdDheiYdAt5WuESNIH1Nq5Z4hF9aes

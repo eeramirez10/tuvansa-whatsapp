@@ -3,6 +3,8 @@ import { AddMessageDto } from "../dtos/add-message.dto";
 import { CreateThreadDto } from "../dtos/create-thread.dto"
 import { ChatThreadEntity } from "../entities/chat-thread.entity";
 import { MessageEntity } from "../entities/message.entity";
+import { GetThreadsDto } from '../dtos/threads/get-threads.dto';
+import { GetMessagesDto } from "../dtos/threads/get-messages.dto";
 
 
 
@@ -20,8 +22,8 @@ export abstract class ChatThreadDatasource {
 
   abstract addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity>
 
-  abstract getThreads(): Promise<ChatThreadEntity[]>
+  abstract getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]>
 
-  abstract getMessagesByThread(threadId: string): Promise<ChatThreadEntity | null>
+  abstract getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null>
 
 }

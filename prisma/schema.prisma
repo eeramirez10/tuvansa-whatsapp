@@ -108,7 +108,14 @@ model Quote {
 
   fileKey String? 
 
+  chatThreadId  String?     @db.Uuid
+  chatThread    ChatThread? @relation(fields: [chatThreadId], references: [id], onDelete: SetNull)
+
   quoteHistory QuoteHistory[]
+
+  summary String?
+
+  @@index([chatThreadId])
 }
 
 model QuoteItem {
@@ -142,6 +149,10 @@ model ChatThread {
 
   // Relación con mensajes
   messages Message[]
+
+  Quote Quote[]
+
+  
 }
 
 model Message {

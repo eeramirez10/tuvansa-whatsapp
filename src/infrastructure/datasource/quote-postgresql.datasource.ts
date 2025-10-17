@@ -5,12 +5,29 @@ import { CreateQuoteDto } from "../../domain/dtos/create-quote.dto";
 import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
 import { QuoteEntity } from "../../domain/entities/quote.entity";
 import { UpdateQuoteItemDto } from "../../domain/dtos/quotes/update-quote-item.dto";
+import { GetQuotesDto } from "../../domain/dtos/quotes/get-quotes.dto";
+import { UpdateQuoteDto } from "../../domain/dtos/quotes/update-quote.dto";
+import { PaginationResult } from "../../domain/entities/pagination-result";
+import dayjs from "dayjs";
 
 
 const prismaClient = new PrismaClient()
 
 
 export class QuotePostgresqlDatasource extends QuoteDatasource {
+
+
+
+  async updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity> {
+    return await prismaClient.quote.update({
+      where: { id },
+      data: updateQuoteDto
+    })
+  }
+
+
+
+
 
 
 
@@ -42,24 +59,50 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
       throw Error('Hubo un error en Quote revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
     }
 
   }
 
-  async getQuotes(): Promise<QuoteEntity[]> {
+  async getQuotes(getQuotesDto: GetQuotesDto): Promise<PaginationResult<QuoteEntity>> {
+
+    const page = Math.max(1, Number(getQuotesDto.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Number(getQuotesDto.pageSize ?? 20)));
+
+    const where = this.buildDateRange(getQuotesDto.startDate, getQuotesDto.endDate);
+
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+
     try {
 
-      return await prismaClient.quote.findMany({
-        orderBy: {
-          createdAt: 'desc'
-        },
-        include: {
-          customer: true,
-          items: true,
-        }
-      })
+      const [total, items] = await Promise.all([
+        prismaClient.quote.count({ where }),
+        prismaClient.quote.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take,
+          include: {
+            customer: true,
+            items: true,
+            // OJO: si messages es grande, considera limitar campos o contar:
+            chatThread: {
+              include: {
+                messages: true
+              }
+            }
+          }
+        })
+
+      ])
+
+      return {
+        items,
+        total,
+        page,
+        pageSize
+      }
 
     } catch (error) {
 
@@ -67,8 +110,6 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
       throw Error('Hubo un error en Quote revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
     }
   }
 
@@ -100,7 +141,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
   async getNextQuoteNumber(): Promise<number> {
 
     const findQuoteName = await prismaClient.counter.findFirst({ where: { name: 'quote' } })
-    console.log({ findQuoteName })
+    // console.log({ findQuoteName })
 
     if (!findQuoteName) {
 
@@ -110,7 +151,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           value: 0
         }
       })
-      console.log({ res })
+      // console.log({ res })
 
     }
 
@@ -128,7 +169,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
   async createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity> {
 
-    const { customerId, fileKey } = createQuoteDto
+    const { customerId, fileKey, threadId } = createQuoteDto
 
 
     try {
@@ -139,7 +180,8 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         data: {
           quoteNumber,
           customerId,
-          fileKey
+          fileKey,
+          chatThreadId: threadId
         },
         include: {
           customer: true,
@@ -183,7 +225,15 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
   }
 
-
+  private buildDateRange(startDate?: string, endDate?: string) {
+    if (!startDate || !endDate) return undefined;
+    // Tus fechas vienen "DD-MM-YYYY"
+    const start = dayjs(startDate, "DD-MM-YYYY", true).startOf("day");
+    const end = dayjs(endDate, "DD-MM-YYYY", true).endOf("day");
+    if (!start.isValid() || !end.isValid()) return undefined;
+    // Prisma: usa gte / lte para incluir el día completo
+    return { createdAt: { gte: start.toDate(), lte: end.toDate() } };
+  }
 
 
 

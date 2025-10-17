@@ -46,7 +46,7 @@ export class TwilioService implements MessageService {
       .from(`${envs.TWILIO_ACCOUNT_SID}:${envs.TWILIO_AUTH_TOKEN}`)
       .toString('base64');
 
-      console.log({mediaUrl})
+      // console.log({mediaUrl})
 
     const res = await fetch(mediaUrl, {
       method: 'GET',

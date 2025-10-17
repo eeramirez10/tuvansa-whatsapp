@@ -19,7 +19,6 @@ export class ThreadsRoutes {
     router.post('/messages', threadsController.getMessages)
 
 
-
     return router
   }
 

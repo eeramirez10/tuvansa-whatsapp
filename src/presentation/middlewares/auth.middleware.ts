@@ -16,8 +16,7 @@ export class AuthMiddleware {
       res.status(401).json({ error: 'No token provided' });
       return
     }
-
-
+  
     if (!authorization.startsWith('Bearer ')) {
 
       res.status(401).json({ error: 'Invalid Bearer token' });
@@ -42,8 +41,15 @@ export class AuthMiddleware {
         return
       }
 
+      const user = await prismaClient.user.findFirst({
+        where: {
+          id: payload.id
+        },
+        include: {
+          branch: true
+        }
+      })
 
-      const user = await prismaClient.user.findFirst({ where: { id: payload.id } });
 
       if (!user) {
         res.status(401).json({ error: 'Invalid token - user not found' })

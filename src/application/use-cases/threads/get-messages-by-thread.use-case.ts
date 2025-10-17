@@ -1,4 +1,5 @@
 import { ChatThreadRepository } from "../../../domain/repositories/chat-thread.repository";
+import { GetMessagesDto } from '../../../domain/dtos/threads/get-messages.dto';
 
 
 export class GetMessagesByThreadUseCase {
@@ -9,7 +10,7 @@ export class GetMessagesByThreadUseCase {
 
 
 
-  execute(threadId: string) {
-    return this.chatThreadRepository.getMessagesByThread(threadId)
+  execute(threadId: string, getMessageDto: GetMessagesDto) {
+    return this.chatThreadRepository.getMessagesByThread(threadId,getMessageDto)
   }
 }

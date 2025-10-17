@@ -21,7 +21,7 @@ export class LoginUserDto {
 
   static execute(options: ExecuteOptions): [string?, LoginUserDto?] {
 
-    console.log(options)
+    // console.log(options)
 
     const { email, password } = options
 
