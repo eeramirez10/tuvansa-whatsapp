@@ -11,6 +11,7 @@ export class JwtAdapter {
     return new Promise((resolve) => {
 
       jwt.sign(payload, SEED!, { expiresIn: duration as unknown as number }, (err, token) => {
+        console.log(err)
 
         if (err) return resolve(null)
         resolve(token!)
