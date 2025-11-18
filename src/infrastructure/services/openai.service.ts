@@ -185,23 +185,3 @@ export class OpenAIService implements LanguageModelService {
 
 
 }
-
-// async userQuestion(questionDto: QuestionDto) {
-//   const { threadId, question } = questionDto
-
-//   const message = await createMessageUseCase(this.openai, { threadId, question })
-
-
-//   const run = await createRunUseCase(this.openai, { threadId });
-
-//   await new CheckCompleteStatusUseCase(openai, this.quoteRepository, this.customerRepository, emailService).execute({ runId: run.id, threadId })
-
-//   const messages = await getMessageListUseCase(this.openai, { threadId })
-
-//   const chatThread = await this.chatThreadRepository.getByThreadId(threadId)
-
-//   if (chatThread?.id) await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({ messages, threadId: chatThread?.id })
-
-
-//   return messages
-// }

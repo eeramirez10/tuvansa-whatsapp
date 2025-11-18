@@ -1,3 +1,4 @@
+import { JsInputValue, JsonValue } from "@prisma/client/runtime/library";
 import { QuoteVersionItemEntity } from "../../domain/entities/quote-version-item.entity";
 import { QuoteVersionEntity } from "../../domain/entities/quote-version.entity";
 import { QuotePrintCompany, QuotePrintTerms, QuotePrintBranding, QuotePrintProps, QuotePrintHeader, QuotePrintCustomer, QuotePrintItem, QuotePrintTotals } from "../template/pdf/types";
@@ -21,7 +22,7 @@ export function toQuotePrintProps(
   };
 
   const customer: QuotePrintCustomer = {
-    name: (version.customerSnapshot?.name ?? '').trim(),
+    name: (version.customerSnapshot?.name  ?? '').trim(),
     lastname: (version.customerSnapshot?.lastname ?? '').trim() || undefined,
     phone: (version.customerSnapshot?.phone ?? '').trim() || undefined,
     email: (version.customerSnapshot?.email ?? '').trim() || undefined,

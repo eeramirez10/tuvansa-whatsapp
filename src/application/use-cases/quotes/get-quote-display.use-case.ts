@@ -245,7 +245,7 @@ export class GetQuoteDisplayUseCase {
       }))
       : undefined;
 
-    const res: DisplayResult = {
+    const res = {
       source: 'VERSION',
       resolution: { reason, usedVersionId: version.id },
       quote: {

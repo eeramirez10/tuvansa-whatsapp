@@ -22,12 +22,12 @@ type Option = {
   notes: string | null,
   summary: string | null,
   sellerId: string | null,
-  customerSnapshot: Prisma.JsonValue,
+  customerSnapshot: Record<string, string>,
   items?: QuoteVersionItemEntity[],
   artifacts?: QuoteArtifact[],
   createdAt?: Date,
   updatedAt?: Date,
-  pdfSentAt?:Date
+  pdfSentAt?: Date
 
 }
 
@@ -53,7 +53,7 @@ export class QuoteVersionEntity {
   public readonly notes: string | null
   public readonly summary: string | null
   public readonly sellerId: string | null
-  public readonly customerSnapshot: Prisma.JsonValue
+  public readonly customerSnapshot: Record<string, string>
   public readonly items?: QuoteVersionItemEntity[]
   public readonly artifacts?: QuoteArtifact[]
   public readonly createdAt?: Date
