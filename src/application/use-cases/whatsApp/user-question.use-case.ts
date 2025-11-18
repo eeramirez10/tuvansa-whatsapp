@@ -1,11 +1,10 @@
-import { ExtractedData, UpdatedCustomerData } from "../../../domain/interfaces/customer";
+import { ExtractedData, UpdatedCustomerData, Customer } from '../../../domain/interfaces/customer';
 import { ChatThreadRepository } from "../../../domain/repositories/chat-thread.repository";
 import { CustomerRepository } from "../../../domain/repositories/customer.repository";
 import { QuoteRepository } from "../../../domain/repositories/quote.repository";
 import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
 import { SaveThreadUseCase } from './save-tread.use-case';
 import { EmailService } from '../../../infrastructure/services/mail.service';
-import { UpdateCustomerUseCase } from "../update-customer.use-case";
 import { SaveHistoryChatUseCase } from "../save-history-chat.use-case";
 import { LanguageModelService } from "../../../domain/services/language-model.service";
 import { QuoteEntity } from "../../../domain/entities/quote.entity";
@@ -13,6 +12,7 @@ import { FileStorageService } from '../../../domain/services/file-storage.servic
 import { MessageService } from "../../../domain/services/message.service";
 import { SendMailUseCase } from "../send-mail.use-case";
 import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
+import { PrismaClient } from "@prisma/client";
 
 
 interface Contacts {
@@ -55,11 +55,15 @@ const contacts: Contacts[] = [
 
 interface Options {
 
-  phone: string,
+  phoneWa: string,
   question: string
   fileUrl?: string
 }
 
+const prisma = new PrismaClient()
+
+
+export type FunctionNameType = "extract_customer_info" | "update_customer_info";
 
 export class UserCuestionUseCase {
 
@@ -77,13 +81,13 @@ export class UserCuestionUseCase {
   }
 
   async execute(options: Options) {
-    const { phone, question } = options;
+    const { phoneWa, question } = options;
 
     // 1) Creamos o recuperamos el thread
     const threadId = await new SaveThreadUseCase(
       this.openaiService,
       this.chatThreadRepository
-    ).execute({ phone });
+    ).execute({ phone: phoneWa });
 
 
 
@@ -119,7 +123,7 @@ export class UserCuestionUseCase {
           const line = buffer.slice(0, idx).trim();
           if (line) {
             await this.messageService.createWhatsAppMessage({
-              to: phone,
+              to: phoneWa,
               body: line
             });
           }
@@ -128,16 +132,15 @@ export class UserCuestionUseCase {
       }
     }
 
-    // 4) Enviamos el resto del buffer
+
     const remainder = buffer.trim();
     if (remainder) {
       await this.messageService.createWhatsAppMessage({
-        to: phone,
+        to: phoneWa,
         body: remainder
       });
     }
 
-    // 5) Polling para tool-calls y guardado (igual que antes)
 
     let newCustomerQuote: QuoteEntity | null = null;
 
@@ -150,29 +153,23 @@ export class UserCuestionUseCase {
 
       if (runstatus.status === 'requires_action') {
 
-        await this.messageService.createWhatsAppMessage({
-          to: phone,
-          body: 'Perfecto, dame un momento en lo que genero tu solicitud...'
-        });
-
         const requiredAction = runstatus.required_action?.submit_tool_outputs.tool_calls;
-
-        // console.log({ requiredAction })
 
         if (!requiredAction) break
 
         const saveCustomerQuote = new SaveCustomerQuoteUseCase(this.quoteRepository, this.customerRepository);
 
-        // console.log({ requiredAction })
-
         const tool_outputs = await Promise.all(
           requiredAction.map(async (action) => {
-            const functionName = action.function.name;
-            // console.log({ functionName });
+
+            const functionName: FunctionNameType = action.function.name as FunctionNameType;
 
             if (functionName === 'extract_customer_info') {
+              await this.messageService.createWhatsAppMessage({
+                to: phoneWa,
+                body: 'Perfecto, dame un momento en lo que genero tu solicitud...'
+              });
               const clientInfo = JSON.parse(action.function.arguments) as ExtractedData;
-              // console.log({ clientInfo });
 
               const {
                 customer_name,
@@ -190,15 +187,12 @@ export class UserCuestionUseCase {
                   lastname: customer_lastname,
                   email,
                   phone,
+                  phoneWa,
                   location,
                   items,
-                  fileKey: file_key
+                  fileKey: file_key,
+                  
                 });
-
-              // console.log({ newCustomerQuote })
-              // console.log({ threadId })
-
-
 
               const chatThread = await this.chatThreadRepository.addCustomer(threadId, newCustomerQuote!.customerId)
 
@@ -208,28 +202,92 @@ export class UserCuestionUseCase {
 
               return {
                 tool_call_id: action.id,
-                output: `{success: true, msg:'Creado correctamente', quoteNumber:'${newCustomerQuote?.quoteNumber}' }`
+                output: JSON.stringify({
+                  succes: true,
+                  msg: 'Creado correctamente',
+                  quoteNumber: newCustomerQuote?.quoteNumber
+                })
               };
+
             }
 
             if (functionName === 'update_customer_info') {
+
+              await this.messageService.createWhatsAppMessage({
+                to: phoneWa,
+                body: 'Vamos a actualizar tus datos'
+              });
+
+
               const clientInfo = JSON.parse(action.function.arguments) as UpdatedCustomerData;
               const { customer_name, customer_lastname, email, phone, location } = clientInfo;
 
-              await new UpdateCustomerUseCase(this.customerRepository).execute({
-                name: customer_name,
-                lastname: customer_lastname,
-                email,
-                phone,
-                location,
-                id: ""
-              })
 
-              return {
-                tool_call_id: action.id,
-                output:
-                  "{success: true, msg:'Actualizado correctamente'}"
-              };
+              try {
+
+                const customer = await prisma.customer.findUnique({
+                  where: { phoneWa }
+                })
+
+                if (!customer) {
+
+                  const payload = { success: false, msg: 'No se encontro al cliente en la BD' }
+
+                  await this.messageService.createWhatsAppMessage({
+                    to: phoneWa,
+                    body: 'Lo siento, aun no estas registrado con nosotros'
+                  });
+
+                  return {
+                    tool_call_id: action.id,
+                    output: JSON.stringify(payload)
+
+                  };
+                }
+
+
+                await prisma.customer.update({
+                  where: {
+                    phoneWa
+                  },
+                  data: {
+                    name: customer_name ?? customer.name,
+                    lastname: customer_lastname ?? customer.lastname,
+                    email: email ?? customer.email,
+                    phone: phone ?? customer.phone,
+                    location: location ?? customer.location
+                  }
+                })
+                const payload = { success: true, msg: 'Actualizado correctamente' };
+
+
+                await this.messageService.createWhatsAppMessage({
+                  to: phoneWa,
+                  body: 'Listo, tus datos quedaron actualizados '
+                });
+                return {
+                  tool_call_id: action.id,
+                  output: JSON.stringify(payload)
+
+                };
+
+              } catch (error) {
+                console.log(error)
+
+
+                await this.messageService.createWhatsAppMessage({
+                  to: phoneWa,
+                  body: 'Lo siento, hubo un error al actualizar tus datos, lo intentare mas tarde'
+                });
+
+                return {
+                  tool_call_id: action.id,
+                  output:
+                    "{success: false, msg:'Error al actualizar al cliente'}"
+                };
+
+              }
+
             }
 
             return { tool_call_id: action.id, output: "{success: true}" };
@@ -237,9 +295,6 @@ export class UserCuestionUseCase {
         );
 
         await this.openaiService.submitToolOutputs(runstatus.thread_id, runstatus.id, tool_outputs)
-
-
-        // console.log(tool_outputs[0]?.output);
 
 
       }
@@ -275,7 +330,7 @@ export class UserCuestionUseCase {
     const asistantResponse = messages!.filter(q => q.role === 'assistant')[0]
     await this.messageService.createWhatsAppMessage({
       body: asistantResponse.content.toString(),
-      to: phone
+      to: phoneWa
     })
 
     // const lines = this.formatQuoteMessageToWhatsApp(customerQuote)
@@ -284,47 +339,47 @@ export class UserCuestionUseCase {
 
 
 
-    for (const contact of contacts) {
+    // for (const contact of contacts) {
 
-      const { phone, email } = contact
+    //   const { phone, email } = contact
 
-      if (!fileUrl) {
+    //   if (!fileUrl) {
 
-        this.sendQuoteTemplateWhatsApp({
-          to: phone,
-          email: email,
-          quote: customerQuote
-        })
-        continue;
-      }
+    //     this.sendQuoteTemplateWhatsApp({
+    //       to: phone,
+    //       email: email,
+    //       quote: customerQuote
+    //     })
+    //     continue;
+    //   }
 
-      this.sendQuoteWithFileToWhatsApp({
-        to: phone,
-        mediaUrl: fileUrl,
-        quote: customerQuote
-      })
+    //   this.sendQuoteWithFileToWhatsApp({
+    //     to: phone,
+    //     mediaUrl: fileUrl,
+    //     quote: customerQuote
+    //   })
 
-    }
+    // }
 
 
-    new SendMailUseCase(this.emailService)
-      .execute({
-        to: [
-          ...contacts.map((contact) => contact.email)
-        ],
-        subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
-        htmlBody: htmlBody,
-        attachments: fileStream ? [
-          {
-            filename: newCustomerQuote.fileKey,
-            content: fileStream.body
-          }
-        ] : null
-      }).then(() => {
-        console.log('Correo enviado correctamente')
-      }).catch((e) => {
-        console.log('[SendMailUseCase]', e)
-      })
+    // new SendMailUseCase(this.emailService)
+    //   .execute({
+    //     to: [
+    //       ...contacts.map((contact) => contact.email)
+    //     ],
+    //     subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
+    //     htmlBody: htmlBody,
+    //     attachments: fileStream ? [
+    //       {
+    //         filename: newCustomerQuote.fileKey,
+    //         content: fileStream.body
+    //       }
+    //     ] : null
+    //   }).then(() => {
+    //     console.log('Correo enviado correctamente')
+    //   }).catch((e) => {
+    //     console.log('[SendMailUseCase]', e)
+    //   })
 
 
 
@@ -337,40 +392,7 @@ export class UserCuestionUseCase {
   }
 
 
-  private formatQuoteMessageToWhatsApp(customerQuote: QuoteEntity) {
 
-    const { customer, items } = customerQuote;
-
-    const lines: string[] = [
-      '*🆕 Nueva cotización TUVANSA IA*',
-      '',
-      `• Nombre: _${customer.name} ${customer.lastname}_`,
-      `• Email: _${customer.email}_`,
-      `• Ubicación: _${customer.location}_`,
-      `• Teléfono: _${customer.phone}_`,
-      '',
-      '*🛒 Cotización:*'
-    ];
-
-    if (items.length > 0) {
-
-      // 2) Para cada ítem, añadimos su sección
-      items.forEach(item => {
-        lines.push('');
-        lines.push(`• Código: *${item.codigo}*`);
-        lines.push(`  - Descripción: ${item.description}`);
-        lines.push(`  - EAN: ${item.ean}`);
-        lines.push(`  - Unidad: ${item.um}`);
-        lines.push(`  - Cantidad: ${item.quantity}`);
-      });
-
-    }
-
-
-
-    return lines;
-
-  }
 
   private splitMessage(text: string): string[] {
     const MAX_LEN = 150
@@ -476,7 +498,7 @@ export class UserCuestionUseCase {
       '3': customer.email,
       '4': customer.location,
       '5': customer.phone,
-      '6': productos.join(' ******************** ') // todo en 1 línea, sin \n
+      '6': productos.join(' ******************** ').replace(/\s*\n\s*/g, ' ')
     };
 
   }

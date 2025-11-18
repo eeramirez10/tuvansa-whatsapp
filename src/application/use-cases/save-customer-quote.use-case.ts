@@ -12,6 +12,7 @@ interface Options {
   lastname: string
   email: string
   phone: string
+  phoneWa:string
   location: string
   items: Item[]
   fileKey?: string
@@ -30,6 +31,7 @@ export class SaveCustomerQuoteUseCase {
       lastname,
       email,
       phone,
+      phoneWa,
       location,
       items = [],
       fileKey,
@@ -42,6 +44,7 @@ export class SaveCustomerQuoteUseCase {
       lastname,
       email,
       phone,
+      phoneWa,
       location,
     })
 

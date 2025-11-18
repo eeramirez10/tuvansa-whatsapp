@@ -14,6 +14,32 @@ const prismaClient = new PrismaClient()
 export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
 
+
+
+  async findByPhone(phoneWa: string): Promise<ChatThreadEntity | null> {
+    return prismaClient.chatThread.findFirst({
+      where: {
+        clientPhoneNumber: phoneWa
+      }
+    })
+  }
+
+  async createThread(createThreadOptions: CreateThreadDto): Promise<ChatThreadEntity> {
+
+
+
+    return await prismaClient.chatThread.create({
+      data: {
+        openAiThreadId: createThreadOptions.threadId,
+        clientPhoneNumber: createThreadOptions.clientPhoneNumber
+      }
+    })
+
+
+
+  }
+
+
   async getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null> {
 
     const { page, pageSize } = getMessageDto
@@ -37,9 +63,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
       }
     })
   }
-
-
-
 
   async getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]> {
 
@@ -71,26 +94,18 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
     })
   }
 
-
   async addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
 
 
-    const customer = await prismaClient.customer.findUnique({ where: { id: customerId } })
+    // const customer = await prismaClient.customer.findUnique({ where: { id: customerId } })
 
-    if (!customer) {
-      console.error('Cliente no encontrado:', customerId);
-      throw new Error(`Cliente no existe con el id: ${customerId}`);
-    }
-
-
-
+    // if (!customer) {
+    //   console.error('Cliente no encontrado:', customerId);
+    //   throw new Error(`Cliente no existe con el id: ${customerId}`);
+    // }
     return await prismaClient.chatThread.update({
-      where: {
-        openAiThreadId
-      },
-      data: {
-        customerId: customerId
-      }
+      where: { openAiThreadId },
+      data: { customerId }
     })
   }
 
@@ -146,32 +161,6 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
   }
 
-
-  async createThread(createThreadOptions: CreateThreadDto): Promise<ChatThreadEntity> {
-
-    try {
-
-      return await prismaClient.chatThread.create({
-        data: {
-          openAiThreadId: createThreadOptions.threadId,
-          clientPhoneNumber: createThreadOptions.clientPhoneNumber
-        }
-      })
-
-    } catch (error) {
-
-      console.log(error)
-
-      throw Error('Hubo un error en ChatThread revisar logs')
-
-    } finally {
-      prismaClient.$disconnect()
-    }
-
-
-  }
-
-
   async addMessage(addMessageOptions: AddMessageDto): Promise<MessageEntity> {
 
     try {
@@ -199,6 +188,18 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
     }
 
   }
+
+  getOrCreateByPhone(phoneWa: string): Promise<ChatThreadEntity> {
+    throw new Error("Method not implemented.");
+  }
+  async setProcessing(chatThreadId: string, isProcessing: boolean): Promise<void> {
+    await prismaClient.chatThread.update({
+      where: { id: chatThreadId },
+      data: { isProcessing }
+    })
+  }
+
+
 
   private async updateLastInteraction(threadId: string) {
 

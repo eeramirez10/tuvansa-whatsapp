@@ -1,0 +1,24 @@
+### Generate Quote PDF
+POST http://localhost:3000/api/quote-versions/64d3f563-3350-4db9-b1a3-6b2550b899ec/artifacts/pdf
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJkNGQ0NWZjLTVmN2EtNGM5My1iNjI2LWJhYTNkYjEyMTgyNyIsImlhdCI6MTc2MTc3NjY5MSwiZXhwIjoxNzYxNzgzODkxfQ.WV5fuUdxwcw9K4WQfOcFAFKjw8MhKWdtYm2wWvIJbkM
+
+### GetDrafts
+GET http://localhost:3000/api/quote-versions/4e42bcdd-1c31-47e0-ad9c-77eca1ed58f2/draft
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJkNGQ0NWZjLTVmN2EtNGM5My1iNjI2LWJhYTNkYjEyMTgyNyIsImlhdCI6MTc2MTc3NjY5MSwiZXhwIjoxNzYxNzgzODkxfQ.WV5fuUdxwcw9K4WQfOcFAFKjw8MhKWdtYm2wWvIJbkM
+
+
+### Send quote PDF
+POST http://localhost:3000/api/quote-versions/send-quote-pdf
+Content-Type: application/json
+
+{
+ 
+  "quoteVersionId":"7923099b-1596-456f-b2ab-cbd5a2246523"
+
+}
+
+### Get pdf presigne
+GET http://localhost:3000/api/quote-versions/8e524e01-415a-4a1e-ad27-7400c0b1cd67/artifacts/pdf/latest
+
+
+

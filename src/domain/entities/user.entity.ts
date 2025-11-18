@@ -42,7 +42,7 @@ export class UserEntity implements User {
     this.lastname = options.lastname
     this.email = options.email
     this.phone = options.phone
-    this.password = options.password
+    // this.password = options.password
     this.role = options.role
     this.isActive = options.isActive
     this.createdAt = options.createdAt

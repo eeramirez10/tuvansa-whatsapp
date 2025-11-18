@@ -1,14 +1,16 @@
 import { envs } from "../../config/envs";
-import { FileStorageService } from "../../domain/services/file-storage.service";
+import { FileStorageService, UploadOptions, UploadResult } from "../../domain/services/file-storage.service";
 import { S3Client, GetObjectCommand, S3 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
+import crypto from 'crypto';
 
 
 
 
 export class S3FileStorageService implements FileStorageService {
+
+
 
 
   private client = new S3Client({
@@ -36,12 +38,41 @@ export class S3FileStorageService implements FileStorageService {
     return result.Location;
   }
 
+  async uploadBuffer(options: UploadOptions): Promise<UploadResult> {
+
+    const checksumSha256 = crypto.createHash('sha256').update(options.body).digest('hex')
+    const upload = new Upload({
+      client: this.client,
+      params: {
+        Bucket: envs.AWS_BUCKET_NAME,
+        Key: options.key,
+        Body: options.body,
+        ContentType: options.contentType,
+        Metadata: {
+          checksumSha256,
+          ...options.metadata,
+        },
+      },
+    });
+
+    await upload.done();
+
+    return {
+      key: options.key,
+      sizeBytes: options.body.byteLength,
+      contentType: options.contentType,
+      checksumSha256,
+    };
+
+  }
+
+
   async generatePresignedUrl(key: string, expiresInSec = 3600): Promise<string> {
     const cmd = new GetObjectCommand({
       Bucket: envs.AWS_BUCKET_NAME,
       Key: key,
-      ResponseContentDisposition: `inline; filename="${key}"`, 
-      ResponseContentType:        'application/pdf',
+      ResponseContentDisposition: `inline; filename="${key}"`,
+      ResponseContentType: 'application/pdf',
     });
     return await getSignedUrl(this.client, cmd, { expiresIn: expiresInSec });
   }

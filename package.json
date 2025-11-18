@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": " NODE_ENV=deveplopment tsnd --respawn --clear src/app.ts",
+    "dev": " NODE_ENV=deveplopment tsx watch  src/app.ts",
     "build": "rm -rf ./dist && tsc",
-    "start": "npm run build && node dist/app.js"
+    "start": "npm run build && node dist/app.js",
+    "test": "node --test --import tsx \"tests/**/*.test.ts\"",
+    "pdf:smoke": "tsx src/dev/pdf-smoke.ts"
   },
   "keywords": [],
   "author": "",
@@ -17,10 +19,13 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.5",
     "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "prisma": "^6.4.1",
     "rimraf": "^6.0.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.3"
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.787.0",
@@ -38,6 +43,9 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.10.0",
     "openai": "^4.85.4",
+    "puppeteer": "^24.26.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "twilio": "^5.4.5",
     "url": "^0.11.4",
     "uuid": "^11.1.0"
