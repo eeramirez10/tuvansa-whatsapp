@@ -1,9 +1,6 @@
 import { envs } from "../../config/envs";
 import twilio from 'twilio'
-import { DeleteFileDto, MessageService, SaveFilesDto } from "../../domain/services/message.service";
-
-
-
+import { DeleteFileDto, MessageService, SaveFilesDto, WhatsAppSendMediaParams, WhatsAppSendMediaResult } from "../../domain/services/message.service";
 import { pipeline } from 'node:stream/promises';  // solo pipeline / finished
 import { Readable } from 'node:stream';          // aquí está fromWeb()
 
@@ -18,7 +15,7 @@ import { Buffer } from "node:buffer";
 interface SendWhatsAppMessageOptions {
   body?: string
   to: string
-  mediaUrl?: string []
+  mediaUrl?: string[]
   contentSid?: string
   contentVariables?: string
 }
@@ -30,6 +27,31 @@ export class TwilioService implements MessageService {
   private client: twilio.Twilio = twilio(envs.TWILIO_ACCOUNT_SID, envs.TWILIO_AUTH_TOKEN)
 
   constructor() { }
+
+
+
+  async sendMediaMessage(options: WhatsAppSendMediaParams): Promise<WhatsAppSendMediaResult> {
+    const {
+      to,
+      body,
+      mediaUrl,
+      filename,
+      statusCallbackUrl,
+
+    } = options
+
+    const msg = await this.client.messages.create({
+      to: `whatsapp:+${to}`, // Text your number
+      from: `whatsapp:${envs.TWILIO_NUMBER}`, // From a valid Twilio number
+      body,
+      mediaUrl: [mediaUrl],
+      statusCallback: statusCallbackUrl,
+    })
+
+    return {
+      providerMessageSid: msg.sid
+    }
+  }
 
 
   async deleteFileFromApi(mediaItem: DeleteFileDto): Promise<void> {
@@ -46,7 +68,7 @@ export class TwilioService implements MessageService {
       .from(`${envs.TWILIO_ACCOUNT_SID}:${envs.TWILIO_AUTH_TOKEN}`)
       .toString('base64');
 
-      // console.log({mediaUrl})
+    // console.log({mediaUrl})
 
     const res = await fetch(mediaUrl, {
       method: 'GET',
@@ -99,24 +121,28 @@ export class TwilioService implements MessageService {
 
   }
 
-  async createWhatsAppMessage(options: SendWhatsAppMessageOptions) {
+  async createWhatsAppMessage(options: SendWhatsAppMessageOptions): Promise<WhatsAppSendMediaResult> {
 
-    const { body, to, mediaUrl, contentSid,  contentVariables} = options
+    const { body, to, mediaUrl, contentSid, contentVariables } = options
 
-    
+
 
     const message = await this.client.messages.create({
       body: body,
       to: `whatsapp:+${to}`, // Text your number
-      from: 'whatsapp:+5215596603295', // From a valid Twilio number
-      mediaUrl:mediaUrl,
+      from: `whatsapp:${envs.TWILIO_NUMBER}`, // From a valid Twilio number
+      mediaUrl: mediaUrl,
       forceDelivery: true,
       contentSid,
       contentVariables
-      
+
     })
 
-    
+    return {
+      providerMessageSid: message.sid
+    }
+
+
 
   }
 

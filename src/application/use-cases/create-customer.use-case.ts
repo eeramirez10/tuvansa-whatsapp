@@ -2,23 +2,24 @@ import { CustomerRepository } from '../../domain/repositories/customer.repositor
 
 
 export interface Options {
-  name:        string
-  lastname:    string
-  email:       string       
-  phone:       string         
-  location:  string
+  name: string
+  lastname: string
+  email: string
+  phone: string
+  phoneWa: string
+  location: string
 
 }
 
-export class CreateCustomerUseCase{
+export class CreateCustomerUseCase {
 
-  constructor(private readonly customerRepository:CustomerRepository){}
+  constructor(private readonly customerRepository: CustomerRepository) { }
 
-  async execute(options:Options){
+  async execute(options: Options) {
 
     const findByPhone = await this.customerRepository.findByPhone(options.phone)
 
-    if(findByPhone) return findByPhone
+    if (findByPhone) return findByPhone
 
     return await this.customerRepository.createCustomer(options)
 

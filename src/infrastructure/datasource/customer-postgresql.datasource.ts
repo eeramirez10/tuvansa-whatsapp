@@ -44,7 +44,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
     })
   }
   getById(customerId: string): Promise<CustomerEntity | null> {
-    // console.log({ customerId })
+ 
     return prismaClient.customer.findFirst({
       where: {
         id: customerId
@@ -67,7 +67,8 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
     return await prismaClient.customer.update({
       where: {
-        phone: rest.phone
+        phone: rest.phone,
+        name: rest.name
       },
       data: {
         ...rest
@@ -86,17 +87,13 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
 
   async createCustomer(createCustomerDto: CreateCustomerDto): Promise<CustomerEntity> {
-    const { name, lastname, email, phone, location = '', } = createCustomerDto
+    const { location = '', ...rest } = createCustomerDto
 
     try {
-
       return await prismaClient.customer.create({
         data: {
-          name,
-          lastname,
-          email,
-          phone,
-          location,
+          ...rest,
+          location
         }
       })
 
@@ -105,11 +102,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
       console.log(error)
 
       throw Error('Hubo un error en Customer revisar logs')
-
-    } finally {
-      prismaClient.$disconnect()
-    }
-
+    } 
 
   }
 

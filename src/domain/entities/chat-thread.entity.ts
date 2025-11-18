@@ -12,6 +12,7 @@ interface ChatThreadOptions {
   lastInteraction: Date;
   location: string;
   customerId: string;
+  isProcessing: boolean;
 }
 
 export class ChatThreadEntity implements ChatThread {
@@ -24,6 +25,7 @@ export class ChatThreadEntity implements ChatThread {
   location: string | null;
   customerId: string | null;
   messages?: MessageEntity[]
+  isProcessing: boolean;
 
   constructor(options: ChatThreadOptions) {
     this.id = options.id;
@@ -34,5 +36,7 @@ export class ChatThreadEntity implements ChatThread {
     this.lastInteraction = options.lastInteraction;
     this.location = options.location;
     this.customerId = options.customerId;
+    this.isProcessing = options.isProcessing
   }
+
 }

@@ -13,22 +13,29 @@ import { GetMessagesDto } from "../../domain/dtos/threads/get-messages.dto";
 export class ChatThreadRepositoryImpl extends ChatThreadRepository {
 
 
-  getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null> {
-    return this.chatThreadDatasource.getMessagesByThread(threadId, getMessageDto)
-  }
 
 
 
   constructor(private readonly chatThreadDatasource: ChatThreadDatasource) {
     super();
   }
-  getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]> {
-    return this.chatThreadDatasource.getThreads(getThreadsDto)
+
+
+
+
+  findByPhone(phoneWa: string): Promise<ChatThreadEntity | null> {
+    return this.chatThreadDatasource.findByPhone(phoneWa)
   }
 
 
+  getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null> {
+    return this.chatThreadDatasource.getMessagesByThread(threadId, getMessageDto)
+  }
 
 
+  getThreads(getThreadsDto: GetThreadsDto): Promise<ChatThreadEntity[]> {
+    return this.chatThreadDatasource.getThreads(getThreadsDto)
+  }
 
 
   addCustomer(openAiThreadId: string, customerId: string): Promise<ChatThreadEntity> {
@@ -50,6 +57,14 @@ export class ChatThreadRepositoryImpl extends ChatThreadRepository {
   addMessage(addMessageDto: AddMessageDto): Promise<MessageEntity> {
     return this.chatThreadDatasource.addMessage(addMessageDto)
   }
+
+  getOrCreateByPhone(phoneWa: string): Promise<ChatThreadEntity> {
+    return this.chatThreadDatasource.getOrCreateByPhone(phoneWa)
+  }
+  setProcessing(chatThreadId: string, isProcessing: boolean): Promise<void> {
+    return this.chatThreadDatasource.setProcessing(chatThreadId, isProcessing)
+  }
+
 
 
 }

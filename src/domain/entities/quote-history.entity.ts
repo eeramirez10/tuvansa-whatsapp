@@ -1,4 +1,4 @@
-import { $Enums, QuoteHistory } from "@prisma/client"
+import { $Enums } from "@prisma/client"
 import { JsonValue } from "@prisma/client/runtime/library"
 
 interface QuoteEntityOptions {
@@ -12,7 +12,7 @@ interface QuoteEntityOptions {
 }
 
 
-export class QuoteHistoryEntity implements QuoteHistory {
+export class QuoteHistoryEntity  {
   id: string
   oldStatus: $Enums.QuoteStatus
   newStatus: $Enums.QuoteStatus

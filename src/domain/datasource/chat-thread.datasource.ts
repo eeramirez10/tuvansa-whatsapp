@@ -26,4 +26,9 @@ export abstract class ChatThreadDatasource {
 
   abstract getMessagesByThread(threadId: string, getMessageDto: GetMessagesDto): Promise<ChatThreadEntity | null>
 
+  abstract getOrCreateByPhone(phoneWa: string): Promise<ChatThreadEntity>
+
+  abstract setProcessing(chatThreadId: string, isProcessing: boolean): Promise<void>
+
+  abstract findByPhone(phoneWa: string): Promise<ChatThreadEntity | null> 
 }

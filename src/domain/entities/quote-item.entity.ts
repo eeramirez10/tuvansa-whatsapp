@@ -1,4 +1,4 @@
-import { QuoteItem } from "@prisma/client";
+
 
 interface QuoteItemOptions {
   id: string;
@@ -12,7 +12,7 @@ interface QuoteItemOptions {
   um: string
 }
 
-export class QuoteItemEntity implements QuoteItem {
+export class QuoteItemEntity  {
   readonly id: string;
   readonly description: string;
   readonly ean: string;

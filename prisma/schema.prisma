@@ -29,58 +29,71 @@ enum UserRole {
   // ...
 }
 
-model Branch {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique
-  address   String?   // si quieres almacenar la dirección de la sucursal
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // Relación inversa: una sucursal puede tener muchos usuarios
-  users     User[]
+enum Channel {
+  WHATSAPP
+  WEB
+  EMAIL
 }
 
+enum Direction {
+  INBOUND
+  OUTBOUND
+}
 
+enum VersionStatus {
+  DRAFT
+  FINAL
+}
+
+enum ArtifactType {
+  PDF
+  HTML
+}
+
+enum PriceOrigin {
+  AUTOMATIC
+  MANUAL
+  PROMO
+  IMPORTED
+}
+
+enum PendingMessageStatus {
+  PENDING
+  PROCESSING
+  DONE
+  ERROR
+}
+
+model Branch {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  address   String? // si quieres almacenar la dirección de la sucursal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relación inversa: una sucursal puede tener muchos usuarios
+  users User[]
+}
 
 model User {
-  id         String      @id @default(uuid()) @db.Uuid
-  name       String
-  lastname   String
-  username   String      @unique
-  email      String      @unique
-  phone      String?     @unique
-  password   String
-  role       UserRole      @default(USER)
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  quoteHistories QuoteHistory[]
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  lastname  String
+  username  String   @unique
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   branchId String? @db.Uuid
 
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade) 
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  QuoteVersion QuoteVersion[]
 }
-
-model QuoteHistory {
-  id         String      @id @default(uuid()) @db.Uuid
-  oldStatus  QuoteStatus
-  newStatus  QuoteStatus
-  changedAt  DateTime    @default(now())
-
-  // Relación con el usuario que hizo el cambio
-  userId  String    @db.Uuid
-  user    User      @relation(fields: [userId], references: [id])
-
-  // Relación con la cotización modificada
-  quoteId String    @db.Uuid
-  quote   Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-
-  // Campo JSON opcional que guarda un "snapshot" parcial o completo de la cotización
-  snapshot Json
-}
-
-
-
 
 model Customer {
   id        String   @id @default(uuid()) @db.Uuid
@@ -88,11 +101,14 @@ model Customer {
   lastname  String
   email     String   @unique
   phone     String   @unique
+  phoneWa   String   @unique
   location  String
   createdAt DateTime @default(now())
 
   quotes      Quote[]
   chatThreads ChatThread[]
+
+  QuoteVersion QuoteVersion[]
 }
 
 model Quote {
@@ -104,22 +120,22 @@ model Quote {
 
   items QuoteItem[] // Relación con los items de la cotización
 
-  status      QuoteStatus @default(PENDING)
+  status QuoteStatus @default(PENDING)
 
-  fileKey String? 
+  fileKey String?
 
-  chatThreadId  String?     @db.Uuid
-  chatThread    ChatThread? @relation(fields: [chatThreadId], references: [id], onDelete: SetNull)
+  chatThreadId String?     @db.Uuid
+  chatThread   ChatThread? @relation(fields: [chatThreadId], references: [id], onDelete: SetNull)
 
-  quoteHistory QuoteHistory[]
-
-  summary String?
+  summary      String?
+  QuoteVersion QuoteVersion[]
+  Message      Message[]
 
   @@index([chatThreadId])
 }
 
 model QuoteItem {
-  id          String @id @default(uuid()) @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
   description String
   ean         String?
   codigo      String?
@@ -132,6 +148,8 @@ model QuoteItem {
 
   quoteId String @db.Uuid
   quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  QuoteVersionItem QuoteVersionItem[]
 }
 
 model ChatThread {
@@ -140,8 +158,10 @@ model ChatThread {
   clientPhoneNumber String
   status            String    @default("ACTIVE")
   createdAt         DateTime  @default(now())
-  lastInteraction   DateTime?  @default(now())
+  lastInteraction   DateTime? @default(now())
   location          String?
+
+  isProcessing Boolean @default(false)
 
   // Relación con Customer (opcional)
   customerId String?   @db.Uuid
@@ -149,21 +169,185 @@ model ChatThread {
 
   // Relación con mensajes
   messages Message[]
-
   Quote Quote[]
+  PendingMessage PendingMessage[]
+}
 
-  
+
+model PendingMessage {
+  id String @id @default(uuid()) @db.Uuid
+  chatThreadId String @db.Uuid 
+  chatThread ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+
+  body String
+  status PendingMessageStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chatThreadId,status, createdAt])
+}
+
+model QuoteVersion {
+  id String @id @default(uuid()) @db.Uuid
+
+  // vínculo al quote ORIGINAL (creado cuando el cliente inicia)
+  quoteId String @db.Uuid
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // para búsquedas/analytics (sin perder el snapshot)
+  customerId String?   @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  versionNumber Int
+  status        VersionStatus @default(FINAL)
+
+  // parámetros congelados desde el UI
+  currency     String
+  taxRate      Decimal  @db.Decimal(5, 4) // ej. 0.1600
+  currencyRate Decimal? @db.Decimal(12, 6)
+
+  // totales
+  subtotal      Decimal  @db.Decimal(18, 4)
+  discountTotal Decimal? @db.Decimal(18, 4)
+  taxTotal      Decimal  @db.Decimal(18, 4)
+  grandTotal    Decimal  @db.Decimal(18, 4)
+
+  // metadatos comerciales
+  validUntil   DateTime?
+  paymentTerms String?
+  deliveryTime String?
+  notes        String?
+  summary      String?
+
+  // vendedor que generó la versión
+  sellerId String? @db.Uuid
+  seller   User?   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+
+  // “foto” inmutable del cliente al momento de la versión
+  customerSnapshot Json
+
+  pdfSentAt DateTime?
+
+  // relaciones
+  items     QuoteVersionItem[]
+  artifacts QuoteArtifact[]    @relation("VersionArtifacts")
+  messages  Message[] // mensajes OUTBOUND que enviaron esta versión
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([quoteId, versionNumber])
+  @@index([quoteId])
+  @@index([customerId])
+  @@index([sellerId])
+}
+
+model QuoteVersionItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  quoteVersionId String       @db.Uuid
+  version        QuoteVersion @relation(fields: [quoteVersionId], references: [id], onDelete: Cascade)
+
+  // opcional: rastro al item original
+  quoteItemId String?    @db.Uuid
+  quoteItem   QuoteItem? @relation(fields: [quoteItemId], references: [id], onDelete: SetNull)
+  uiLineId    String? // id de línea del UI
+
+  // datos congelados
+  description String
+  ean         String?
+  codigo      String?
+  um          String  @default("UNIT")
+
+  quantity  Decimal  @db.Decimal(12, 4)
+  cost      Decimal? @db.Decimal(18, 4)
+  currency  String
+  price     Decimal? @db.Decimal(18, 4)
+  marginPct Decimal? @db.Decimal(5, 2)
+  lineTotal Decimal  @db.Decimal(18, 4)
+
+  discountPct    Decimal? @db.Decimal(5, 2)
+  discountAmount Decimal? @db.Decimal(18, 4)
+  taxRate        Decimal? @db.Decimal(5, 4)
+
+  priceOrigin      PriceOrigin? @default(AUTOMATIC)
+  sourceProductKey String?
+
+  // almacén como snapshot simple (sin FK)
+  warehouse   String?
+  binLocation String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteVersionId])
+  @@index([quoteItemId])
+}
+
+model QuoteArtifact {
+  id             String       @id @default(uuid()) @db.Uuid
+  quoteVersionId String       @db.Uuid
+  version        QuoteVersion @relation(name: "VersionArtifacts", fields: [quoteVersionId], references: [id], onDelete: Cascade)
+
+  type      ArtifactType
+  fileKey   String // S3 key del PDF/HTML generado
+  mimeType  String?
+  checksum  String?
+  publicUrl String?
+
+  createdAt DateTime @default(now())
+
+  // mensajes OUTBOUND que enviaron este artefacto
+  messages Message[]
+
+  @@index([quoteVersionId])
+  @@index([type])
 }
 
 model Message {
   id        String   @id @default(uuid()) @db.Uuid
-  role      String
+  role      String // "user" | "assistant"
   content   String
   createdAt DateTime @default(now())
 
-  // Relación con el hilo de chat
+  // Conversación (ya lo tenías)
   chatThreadId String     @db.Uuid
   chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+
+  // === NUEVO: transporte/omnicanal ===
+  channel           Channel   @default(WHATSAPP)
+  direction         Direction @default(INBOUND)
+  from              String? // E.164 emisor (inbound)
+  to                String? // E.164 receptor (outbound)
+  provider          String? // "TWILIO"
+  providerMessageId String? // MessageSid (único si existe)
+  status            String? // queued|sent|delivered|read|failed
+  errorCode         String?
+
+  // === NUEVO: vínculo con cotización oficial (cuando envías) ===
+  quoteId String? @db.Uuid
+  quote   Quote?  @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  quoteVersionId String?       @db.Uuid
+  quoteVersion   QuoteVersion? @relation(fields: [quoteVersionId], references: [id], onDelete: SetNull)
+
+  quoteArtifactId String?        @db.Uuid
+  quoteArtifact   QuoteArtifact? @relation(fields: [quoteArtifactId], references: [id], onDelete: SetNull)
+
+  // === NUEVO: plantillas/medios (Content API) ===
+  templateCode String?
+  contentSid   String?
+  variables    Json? // variables de plantilla
+  media        Json? // [{ type:"PDF", fileKey:"...", mimeType:"application/pdf" }]
+
+  idempotencyKey String?
+
+  @@index([chatThreadId, createdAt])
+  @@index([providerMessageId])
+  @@index([quoteId])
+  @@index([quoteVersionId])
+  @@index([quoteArtifactId])
+  @@index([to])
 }
 
 model Counter {
