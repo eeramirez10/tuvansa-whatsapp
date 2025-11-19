@@ -7,8 +7,8 @@ export interface HtmlToPdfOptions {
 
 export async function htmlToPdf(html: string, opts: HtmlToPdfOptions = {}): Promise<Uint8Array<ArrayBufferLike>> {
   const browser = await puppeteer.launch({
-    headless: 'shell',
-    args: ['--no-sandbox', '--font-render-hinting=none'],
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
   });
 
   try {
