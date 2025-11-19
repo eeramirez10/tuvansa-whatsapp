@@ -8,18 +8,19 @@ export async function htmlToPdf(
   html: string,
   opts: HtmlToPdfOptions = {}
 ): Promise<Uint8Array<ArrayBufferLike>> {
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    '/app/.chrome-for-testing/chrome-linux64/chrome'; // ruta del buildpack
+
   const browser = await puppeteer.launch({
-    headless: true, // o true
-    executablePath:
-      process.env.PUPPETEER_EXECUTABLE_PATH || // por si la seteas en Heroku
-      'chrome',                               // usa el chrome del buildpack
+    headless: true,
+    executablePath,
     args: [
       '--headless',
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
-      // '--remote-debugging-port=9222', // opcional si lo necesitas
     ],
   });
 
