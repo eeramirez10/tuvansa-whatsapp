@@ -174,7 +174,10 @@ export class SendQuoteToCustomerSessionUseCase {
           {
             to,
             version,
-            quote,
+            quote:{
+              ...quote,
+              summary:''
+            },
             presignedUrl
           }
         )
