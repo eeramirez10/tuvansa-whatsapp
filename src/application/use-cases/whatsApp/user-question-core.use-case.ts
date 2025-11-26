@@ -2,15 +2,18 @@ import { PrismaClient } from "@prisma/client";
 import { ChatThreadRepository } from "../../../domain/repositories/chat-thread.repository";
 import { CustomerRepository } from "../../../domain/repositories/customer.repository";
 import { QuoteRepository } from "../../../domain/repositories/quote.repository";
-import { FileStorageService } from "../../../domain/services/file-storage.service";
 import { LanguageModelService } from "../../../domain/services/language-model.service";
 import { MessageService } from "../../../domain/services/message.service";
-import { EmailService } from "../../../infrastructure/services/mail.service";
 import { ExtractedData, UpdatedCustomerData } from "../../../domain/interfaces/customer";
 import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
 import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
 import { QuoteEntity } from "../../../domain/entities/quote.entity";
-import { SaveHistoryChatUseCase } from "../save-history-chat.use-case";
+import { SummarizeConversationUseCase } from "../messages/summarize-conversation.use-case";
+import { OpenAiFunctinsService } from "../../../infrastructure/services/openai-functions.service";
+import { ContactService } from '../../../infrastructure/services/contacts.service';
+import { envs } from "../../../config/envs";
+import { EmailService } from "../../../infrastructure/services/mail.service";
+import { WhatsAppNotificationService } from "../../../infrastructure/services/whatsapp-notification.service";
 
 
 interface CoreOptions {
@@ -31,8 +34,6 @@ export class UserQuestionCoreUseCase {
     private readonly chatThreadRepository: ChatThreadRepository,
     private readonly quoteRepository: QuoteRepository,
     private readonly customerRepository: CustomerRepository,
-    private readonly emailService: EmailService,
-    private readonly fileStorageService: FileStorageService,
     private readonly messageService: MessageService,
 
   ) { }
@@ -295,6 +296,8 @@ export class UserQuestionCoreUseCase {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
+
+
     // 4) Guardar historial (como ya hacías)
     // const messages = await this.openaiService.getMessageList(threadId);
 
@@ -306,24 +309,43 @@ export class UserQuestionCoreUseCase {
     // 5) PDF/correo si se creó una nueva cotización
     if (!newCustomerQuote) return;
 
-    let fileStream: any;
-    let fileUrl: string | undefined;
+    const summarizeConversation = new SummarizeConversationUseCase(this.quoteRepository, new OpenAiFunctinsService)
 
-    if (newCustomerQuote.fileKey) {
-      fileStream = await this.fileStorageService.getFileStream(
-        newCustomerQuote.fileKey,
-      );
-      fileUrl = await this.fileStorageService.generatePresignedUrl(
-        newCustomerQuote.fileKey,
-        360000,
-      );
-    }
+    const { summary } = await summarizeConversation.execute(newCustomerQuote.id)
 
-    const customerQuote = await this.quoteRepository.findByQuoteNumber({
-      quoteNumber: newCustomerQuote.quoteNumber,
-    });
+    console.log({ summary })
 
-    const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
+    const contactService = new ContactService(new EmailService(), new WhatsAppNotificationService(this.messageService))
+
+    contactService.sendWhatsApp({
+      summary,
+      url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
+    })
+
+    contactService.sendEmail({
+      summary,
+      url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
+    })
+
+
+    // let fileStream: any;
+    // let fileUrl: string | undefined;
+
+    // if (newCustomerQuote.fileKey) {
+    //   fileStream = await this.fileStorageService.getFileStream(
+    //     newCustomerQuote.fileKey,
+    //   );
+    //   fileUrl = await this.fileStorageService.generatePresignedUrl(
+    //     newCustomerQuote.fileKey,
+    //     360000,
+    //   );
+    // }
+
+    // const customerQuote = await this.quoteRepository.findByQuoteNumber({
+    //   quoteNumber: newCustomerQuote.quoteNumber,
+    // });
+
+    // const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
 
     // Aquí puedes reactivar todo tu envío de correo / plantillas de WhatsApp
     // como ya lo tenías.

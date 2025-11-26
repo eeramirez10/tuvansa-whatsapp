@@ -11,6 +11,7 @@ import { EmailService } from "../../infrastructure/services/mail.service";
 import { MessageService } from "../../domain/services/message.service";
 import { TwilioService } from "../../infrastructure/services/twilio.service";
 import { S3FileStorageService } from '../../infrastructure/services/s3-file-storage.service';
+import { ContactService } from "../../infrastructure/services/contacts.service";
 
 
 
@@ -37,7 +38,7 @@ export class WhatsAppRoutes {
       quoteRepositoryImpl,
       customerRepositoryImpl,
       new TwilioService(),
-      s3FileStorageService
+      s3FileStorageService,
     )
     
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))

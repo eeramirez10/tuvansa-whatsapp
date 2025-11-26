@@ -11,3 +11,14 @@ Content-Type: application/json
 ### Renew token
 GET  http://localhost:3000/api/auth/renew
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJkNGQ0NWZjLTVmN2EtNGM5My1iNjI2LWJhYTNkYjEyMTgyNyIsImlhdCI6MTc2MDYzNjExNywiZXhwIjoxNzYwNjQzMzE3fQ.iyIqoZiCv_GIFkdDheiYdAt5WuESNIH1Nq5Z4hF9aes
+
+
+
+### Login
+POST https://tuvansa-whatsapp-e803a3bc1ce0.herokuapp.com/api/auth/login
+Content-Type: application/json
+
+{
+  "email":"gbarranco@tuvansa.com.mx",
+  "password":"Ag7348pp**"
+}

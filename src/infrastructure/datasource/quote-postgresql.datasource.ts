@@ -50,6 +50,11 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         include: {
           customer: true,
           items: true,
+          chatThread: {
+            include: {
+              messages: true
+            }
+          }
         }
       })
 

@@ -19,12 +19,10 @@ export class GetQuotesUseCase {
     let newQuotes = await Promise.all(
       quotes.items.map(async (quote) => {
 
-       
-
+      
         if (quote.chatThread && !quote.summary && quote.chatThread.messages.length > 0) {
 
        
-
           const messages = quote
             .chatThread
             .messages

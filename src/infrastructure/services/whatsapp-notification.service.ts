@@ -1,16 +1,17 @@
 import { MessageService } from '../../domain/services/message.service';
-import { WHATSAPP_TEMPLATES, WhatsappTemplate } from '../template/whatsapp/whatsapp-templates';
+import { QuoteTemplateData, WHATSAPP_TEMPLATES, WhatsappTemplate } from '../template/whatsapp/whatsapp-templates';
 
-type QuoteTemplateData = {
-  to: string;
-  version?: {
-    customer: { name: string; lastname: string };
-    quote: { quoteNumber: string | number };
-  };
-  quote?: any; // tu tipo de Quote
-  presignedUrl?: string;
-  mediaUrl?: string;
-};
+// type QuoteTemplateData = {
+//   to: string;
+//   version?: {
+//     customer: { name: string; lastname: string };
+//     quote: { quoteNumber: string | number };
+//   };
+//   quote?: any; // tu tipo de Quote
+//   presignedUrl?: string;
+//   mediaUrl?: string;
+
+// };
 
 export class WhatsAppNotificationService {
 

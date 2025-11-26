@@ -18,6 +18,7 @@ import { EnsureChatThreadForPhoneUseCase } from "../../application/use-cases/wha
 import { PrismaClient } from "@prisma/client";
 import { UserQuestionQueueProcessor } from "../../application/use-cases/whatsApp/user-question-queue-processor.use-case";
 import { UserQuestionCoreUseCase } from '../../application/use-cases/whatsApp/user-question-core.use-case';
+import { ContactService } from '../../infrastructure/services/contacts.service';
 
 
 enum Message {
@@ -41,7 +42,8 @@ export class WhatsAppController {
     private quoteRepository: QuoteRepository,
     private customerRepository: CustomerRepository,
     private messageService: MessageService,
-    private fileStorageService: FileStorageService
+    private fileStorageService: FileStorageService,
+   
 
   ) {
 
@@ -68,7 +70,12 @@ export class WhatsAppController {
 
       if (MessageType === 'text') {
 
-        const { chatThread } = await new EnsureChatThreadForPhoneUseCase(this.openAIService, this.chatThreadRepository).execute(WaId)
+        const { chatThread } = await
+          new EnsureChatThreadForPhoneUseCase(
+            this.openAIService,
+            this.chatThreadRepository)
+            .execute(WaId)
+
         await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
@@ -76,12 +83,12 @@ export class WhatsAppController {
           }
         })
 
-        await new Promise((resolve) => {
+        // await new Promise((resolve) => {
 
-          setTimeout(() => {
-            resolve(null)
-          }, 8000)
-        })
+        //   setTimeout(() => {
+        //     resolve(null)
+        //   }, 8000)
+        // })
 
         // const userQuestionCore = new UserQuestionCoreUseCase(
         //   this.openAIService,
@@ -254,9 +261,8 @@ export class WhatsAppController {
         this.chatThreadRepository,
         this.quoteRepository,
         this.customerRepository,
-        this.emailService,
-        this.fileStorageService,
-        this.messageService
+        this.messageService,
+
       )
 
       new UserQuestionQueueProcessor(
