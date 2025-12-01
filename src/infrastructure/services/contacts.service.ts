@@ -180,7 +180,10 @@ export class ContactService {
 
         <p>Tienes una nueva cotización generada desde la web Tuvansa IA.</p>
 
-        <p class="summary">Resumen: ${summary}</p>
+        <p class="summary">Resumen</p>
+        <p class="summary">
+           ${summary}
+        </p>
 
         <p>
           Accede a la cotización completa haciendo clic aquí:

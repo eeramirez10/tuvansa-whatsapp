@@ -67,7 +67,7 @@ export class UserQuestionQueueProcessor {
           .filter((p) => p.length > 0)
           .join('\n')
 
-        // console.log({ combinedQuestion })
+        console.log({ combinedQuestion })
 
         if (!combinedQuestion) {
           await prisma.pendingMessage.updateMany({

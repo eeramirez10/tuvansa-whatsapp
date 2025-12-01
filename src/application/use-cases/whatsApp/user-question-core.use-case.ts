@@ -14,6 +14,7 @@ import { ContactService } from '../../../infrastructure/services/contacts.servic
 import { envs } from "../../../config/envs";
 import { EmailService } from "../../../infrastructure/services/mail.service";
 import { WhatsAppNotificationService } from "../../../infrastructure/services/whatsapp-notification.service";
+import { ProductStreamParser } from "../../../infrastructure/services/product-stream-parser.service";
 
 
 interface CoreOptions {
@@ -43,6 +44,8 @@ export class UserQuestionCoreUseCase {
 
     const { phoneWa, question, threadId, chatThreadId } = options
 
+    const parser = new ProductStreamParser();
+
     await prisma.message.create({
       data: {
         role: 'user',
@@ -54,7 +57,7 @@ export class UserQuestionCoreUseCase {
       }
     })
 
-    console.log({ question })
+
 
     await this.openaiService.createMessage({ threadId, question })
 
@@ -64,12 +67,11 @@ export class UserQuestionCoreUseCase {
 
     // STREAMING: respondemos por cada salto de línea para que el cliente vea movimiento
     let buffer = '';
+
     for await (const event of stream) {
       if (event.event !== 'thread.message.delta') continue;
 
-      const parts = (event.data as any).delta.content as Array<{
-        text: { value: string };
-      }>;
+      const parts = (event.data as any).delta.content as Array<{ text: { value: string } }>;
 
       for (const part of parts) {
         buffer += part.text.value;
@@ -77,29 +79,52 @@ export class UserQuestionCoreUseCase {
         let idx: number;
         while ((idx = buffer.indexOf('\n')) !== -1) {
           const line = buffer.slice(0, idx).trim();
-          if (line) {
-            await this.messageService.createWhatsAppMessage({
-              to: phoneWa,
-              body: line,
-            });
 
-            await prisma.message.create({
-              data: {
-                role: 'assistant',
-                content: line,
-                chatThreadId,
-                channel: 'WHATSAPP',
-                direction: 'OUTBOUND',
-                to: phoneWa,
-              },
-            });
+          if (line) {
+            const { isProductLine, completedIndex } = parser.processLine(line);
+
+            // Si NO es línea de producto → la mandas tal cual
+            if (!isProductLine) {
+              await this.messageService.createWhatsAppMessage({ to: phoneWa, body: line });
+              await prisma.message.create({
+                data: {
+                  role: 'assistant',
+                  content: line,
+                  chatThreadId,
+                  channel: 'WHATSAPP',
+                  direction: 'OUTBOUND',
+                  to: phoneWa,
+                },
+              });
+            }
+
+            // Si se completó un producto → mandas SOLO el bloque junto
+            if (completedIndex != null) {
+              const bloque = parser.formatProduct(completedIndex);
+              if (bloque) {
+                await this.messageService.createWhatsAppMessage({ to: phoneWa, body: bloque });
+                await prisma.message.create({
+                  data: {
+                    role: 'assistant',
+                    content: bloque,
+                    chatThreadId,
+                    channel: 'WHATSAPP',
+                    direction: 'OUTBOUND',
+                    to: phoneWa,
+                  },
+                });
+                parser.markSent(completedIndex);
+              }
+            }
           }
+
           buffer = buffer.slice(idx + 1);
         }
       }
     }
 
     const remainder = buffer.trim();
+    console.log({ remainder })
     if (remainder) {
       await this.messageService.createWhatsAppMessage({
         to: phoneWa,
@@ -313,7 +338,7 @@ export class UserQuestionCoreUseCase {
 
     const { summary } = await summarizeConversation.execute(newCustomerQuote.id)
 
-    console.log({ summary })
+  
 
     const contactService = new ContactService(new EmailService(), new WhatsAppNotificationService(this.messageService))
 
