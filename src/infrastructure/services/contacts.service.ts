@@ -27,11 +27,11 @@ export class ContactService {
       name: 'Erick',
       email: "eeramirez@tuvansa.com.mx"
     },
-    {
-      phone: '5216243828879',
-      name: 'Luis Quintero',
-      email: "lquintero@tuvansa.com.mx"
-    },
+    // {
+    //   phone: '5216243828879',
+    //   name: 'Luis Quintero',
+    //   email: "lquintero@tuvansa.com.mx"
+    // },
     {
       phone: '525541141306',
       name: 'Roy Grinberg',
@@ -46,6 +46,11 @@ export class ContactService {
       phone: "528116603993",
       name: "Alejandro Lozano",
       email: "alozano@tuvansa.com.mx"
+    },
+    {
+      phone: "525544129884",
+      name: "Christian Gonzalez",
+      email: "cgonzalez@tuvansa.com.mx"
     }
   ]
 
@@ -96,7 +101,7 @@ export class ContactService {
       for (const contact of this.contacts) {
 
         await this.whatsAppNotificationService.sendTemplateMessage(
-          WhatsappTemplate.QUOTE_WEB_NOTIFICATION, {
+          WhatsappTemplate.QUOTE_WEB_NOTIFICATION_ICONS, {
           quote: { summary },
           url,
           to: contact.phone

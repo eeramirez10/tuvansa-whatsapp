@@ -2,7 +2,8 @@ export enum WhatsappTemplate {
   QUOTE_PDF_FOLLOWUP_FILE = "QUOTE_PDF_FOLLOWUP_FILE",
   COTIZACION_IA_WITH_FILE_DYNAMYC = "COTIZACION_IA_WITH_FILE_DYNAMYC",
   COTIZACION_TUVANSA_IA_02 = "COTIZACION_TUVANSA_IA_02",
-  QUOTE_WEB_NOTIFICATION = 'QUOTE_WEB_NOTIFICATION'
+  QUOTE_WEB_NOTIFICATION = 'QUOTE_WEB_NOTIFICATION',
+  QUOTE_WEB_NOTIFICATION_ICONS = "QUOTE_WEB_NOTIFICATION_ICONS"
 }
 
 export type QuoteTemplateData = {
@@ -52,7 +53,16 @@ export const WHATSAPP_TEMPLATES: Record<WhatsappTemplate, TemplateConfig> = {
       return {
         1: data.quote.summary,
         2: data.url
-      }
+      };
+    }
+  },
+  [WhatsappTemplate.QUOTE_WEB_NOTIFICATION_ICONS]: {
+    contentSid: "HX466d5b6a2b58b962d7ec2dbe87583c53",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: data.quote.summary,
+        2: data.url
+      };
     }
   }
 }

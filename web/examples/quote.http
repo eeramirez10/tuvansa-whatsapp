@@ -1,0 +1,6 @@
+### Get Quote display
+GET http://localhost:3000/api/quotes/5019e0fb-fbde-4eff-a306-d3a668ea3c76/display
+Authorization: Bearer 
+
+### Get Quote File
+GET http://localhost:3000/api/quotes/ME7a1dd84f00d0e1bbb9a5a43ab64a2eb9.pdf/quote
