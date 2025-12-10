@@ -103,6 +103,7 @@ model Customer {
   phone     String   @unique
   phoneWa   String   @unique
   location  String
+  company   String?
   createdAt DateTime @default(now())
 
   quotes      Quote[]

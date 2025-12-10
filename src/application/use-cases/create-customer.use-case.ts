@@ -8,6 +8,7 @@ export interface Options {
   phone: string
   phoneWa: string
   location: string
+  company:string
 
 }
 

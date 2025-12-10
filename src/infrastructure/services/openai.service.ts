@@ -72,7 +72,8 @@ export class OpenAIService implements LanguageModelService {
 
     const messages = messageList.data.map(message => ({
       role: message.role,
-      content: message.content.map(content => (content as any).text.value)
+      content: message.content.map(content => (content as any).text.value),
+      created_at: message.created_at
     }))
 
     return messages

@@ -26,7 +26,7 @@ interface CoreOptions {
 
 const prisma = new PrismaClient
 
-export type FunctionNameType = 'extract_customer_info' | 'update_customer_info';
+export type FunctionNameType = 'extract_customer_info' | 'update_customer_info' | 'get_info_customer';
 
 export class UserQuestionCoreUseCase {
 
@@ -42,315 +42,440 @@ export class UserQuestionCoreUseCase {
 
   async execute(options: CoreOptions) {
 
-    const { phoneWa, question, threadId, chatThreadId } = options
-
+    const contactService = new ContactService(new EmailService(), new WhatsAppNotificationService(this.messageService))
+    const summarizeConversation = new SummarizeConversationUseCase(this.quoteRepository, new OpenAiFunctinsService)
     const parser = new ProductStreamParser();
 
-    await prisma.message.create({
-      data: {
-        role: 'user',
-        content: question,
-        chatThreadId,
-        channel: 'WHATSAPP',
-        direction: 'INBOUND',
-        from: phoneWa,
-      }
-    })
+    let newCustomerQuote: QuoteEntity | null = null;
+    let usedGetInfoCustomer = false
+
+    const { phoneWa, question, threadId, chatThreadId } = options
 
 
 
-    await this.openaiService.createMessage({ threadId, question })
 
-    const runStream = await this.openaiService.startRunStream({ threadId, assistantId: 'asst_zH28urJes1YILRhYUZrjjakE' })
+    try {
 
-    const { runId, stream } = runStream;
+      await prisma.message.create({
+        data: {
+          role: 'user',
+          content: question,
+          chatThreadId,
+          channel: 'WHATSAPP',
+          direction: 'INBOUND',
+          from: phoneWa,
+        }
+      })
 
-    // STREAMING: respondemos por cada salto de línea para que el cliente vea movimiento
-    let buffer = '';
 
-    for await (const event of stream) {
-      if (event.event !== 'thread.message.delta') continue;
 
-      const parts = (event.data as any).delta.content as Array<{ text: { value: string } }>;
+      await this.openaiService.createMessage({ threadId, question })
 
-      for (const part of parts) {
-        buffer += part.text.value;
+      const runStream = await this.openaiService.startRunStream({ threadId, assistantId: 'asst_zH28urJes1YILRhYUZrjjakE' })
 
-        let idx: number;
-        while ((idx = buffer.indexOf('\n')) !== -1) {
-          const line = buffer.slice(0, idx).trim();
+      const { runId, stream } = runStream;
 
-          if (line) {
-            const { isProductLine, completedIndex } = parser.processLine(line);
+      // STREAMING: respondemos por cada salto de línea para que el cliente vea movimiento
+      let buffer = '';
 
-            // Si NO es línea de producto → la mandas tal cual
-            if (!isProductLine) {
-              await this.messageService.createWhatsAppMessage({ to: phoneWa, body: line });
-              await prisma.message.create({
-                data: {
-                  role: 'assistant',
-                  content: line,
-                  chatThreadId,
-                  channel: 'WHATSAPP',
-                  direction: 'OUTBOUND',
-                  to: phoneWa,
-                },
-              });
-            }
+      for await (const event of stream) {
+        if (event.event !== 'thread.message.delta') continue;
 
-            // Si se completó un producto → mandas SOLO el bloque junto
-            if (completedIndex != null) {
-              const bloque = parser.formatProduct(completedIndex);
-              if (bloque) {
-                await this.messageService.createWhatsAppMessage({ to: phoneWa, body: bloque });
+        const parts = (event.data as any).delta.content as Array<{ text: { value: string } }>;
+
+        for (const part of parts) {
+          buffer += part.text.value;
+
+          let idx: number;
+          while ((idx = buffer.indexOf('\n')) !== -1) {
+            const line = buffer.slice(0, idx).trim();
+
+            if (line) {
+              const { isProductLine, completedIndex } = parser.processLine(line);
+
+              // Si NO es línea de producto → la mandas tal cual
+              if (!isProductLine) {
+                await this.messageService.createWhatsAppMessage({ to: phoneWa, body: line });
                 await prisma.message.create({
                   data: {
                     role: 'assistant',
-                    content: bloque,
+                    content: line,
                     chatThreadId,
                     channel: 'WHATSAPP',
                     direction: 'OUTBOUND',
                     to: phoneWa,
                   },
                 });
-                parser.markSent(completedIndex);
+              }
+
+
+              if (completedIndex != null) {
+                const bloque = parser.formatProduct(completedIndex);
+                if (bloque) {
+                  await this.messageService.createWhatsAppMessage({ to: phoneWa, body: bloque });
+                  await prisma.message.create({
+                    data: {
+                      role: 'assistant',
+                      content: bloque,
+                      chatThreadId,
+                      channel: 'WHATSAPP',
+                      direction: 'OUTBOUND',
+                      to: phoneWa,
+                    },
+                  });
+                  parser.markSent(completedIndex);
+                }
               }
             }
-          }
 
-          buffer = buffer.slice(idx + 1);
+            buffer = buffer.slice(idx + 1);
+          }
         }
       }
-    }
 
-    const remainder = buffer.trim();
-    console.log({ remainder })
-    if (remainder) {
-      await this.messageService.createWhatsAppMessage({
-        to: phoneWa,
-        body: remainder,
-      });
-
-      await prisma.message.create({
-        data: {
-          role: 'assistant',
-          content: remainder,
-          chatThreadId,
-          channel: 'WHATSAPP',
-          direction: 'OUTBOUND',
+      const remainder = buffer.trim();
+      console.log({ remainder })
+      if (remainder) {
+        await this.messageService.createWhatsAppMessage({
           to: phoneWa,
-        },
-      });
-    }
+          body: remainder,
+        });
 
-    let newCustomerQuote: QuoteEntity | null = null;
-
-    while (true) {
-      const runstatus = await this.openaiService.checkStatus(threadId, runId);
-
-      if (runstatus.status === 'completed') break;
-
-      if (runstatus.status === 'requires_action') {
-        const requiredAction =
-          runstatus.required_action?.submit_tool_outputs.tool_calls;
-
-        if (!requiredAction) break;
-
-        const saveCustomerQuote = new SaveCustomerQuoteUseCase(
-          this.quoteRepository,
-          this.customerRepository,
-        );
-
-        const tool_outputs = await Promise.all(
-          requiredAction.map(async (action) => {
-            const functionName: FunctionNameType =
-              action.function.name as FunctionNameType;
-
-            if (functionName === 'extract_customer_info') {
-              await this.messageService.createWhatsAppMessage({
-                to: phoneWa,
-                body: 'Perfecto, dame un momento en lo que genero tu solicitud...',
-              });
-
-              const clientInfo = JSON.parse(
-                action.function.arguments,
-              ) as ExtractedData;
-
-              const {
-                customer_name,
-                customer_lastname,
-                email,
-                phone,
-                location,
-                items = [],
-                file_key,
-              } = clientInfo;
-
-              newCustomerQuote = await saveCustomerQuote.execute({
-                name: customer_name,
-                lastname: customer_lastname,
-                email,
-                phone,
-                phoneWa,
-                location,
-                items,
-                fileKey: file_key,
-              });
-
-              const chatThread = await this.chatThreadRepository.addCustomer(
-                threadId,
-                newCustomerQuote!.customerId,
-              );
-
-              const [err, updateQuoteDto] = UpdateQuoteDto.execute({
-                chatThreadId: chatThread.id,
-              });
-
-              if (!err) {
-                await this.quoteRepository.updateQuote(
-                  newCustomerQuote!.id,
-                  updateQuoteDto,
-                );
-              }
-
-              await this.messageService.createWhatsAppMessage({
-                to: phoneWa,
-                body: `
-                  Tu solicitud quedó registrada con el número de cotización COT-${newCustomerQuote?.quoteNumber}. Muy pronto el área de Ventas te enviará los precios y tiempos de entrega. Gracias por confiar en nosotros, será un gusto seguir apoyándote
-                `,
-              });
+        await prisma.message.create({
+          data: {
+            role: 'assistant',
+            content: remainder,
+            chatThreadId,
+            channel: 'WHATSAPP',
+            direction: 'OUTBOUND',
+            to: phoneWa,
+          },
+        });
+      }
 
 
-              return {
-                tool_call_id: action.id,
-                output: JSON.stringify({
-                  succes: true,
-                  msg: 'Creado correctamente',
-                  quoteNumber: newCustomerQuote?.quoteNumber,
-                }),
-              };
-            }
 
-            if (functionName === 'update_customer_info') {
-              await this.messageService.createWhatsAppMessage({
-                to: phoneWa,
-                body: 'Vamos a actualizar tus datos',
-              });
 
-              const clientInfo = JSON.parse(
-                action.function.arguments,
-              ) as UpdatedCustomerData;
-              const { customer_name, customer_lastname, email, phone, location } =
-                clientInfo;
+      while (true) {
+        const runstatus = await this.openaiService.checkStatus(threadId, runId);
 
-              try {
+        if (runstatus.status === 'completed') break;
+
+        if (runstatus.status === 'requires_action') {
+          const requiredAction =
+            runstatus.required_action?.submit_tool_outputs.tool_calls;
+
+
+
+          if (!requiredAction) break;
+
+          const saveCustomerQuote = new SaveCustomerQuoteUseCase(
+            this.quoteRepository,
+            this.customerRepository,
+          );
+
+          const tool_outputs = await Promise.all(
+            requiredAction.map(async (action) => {
+              const functionName: FunctionNameType =
+                action.function.name as FunctionNameType;
+
+
+
+              if (functionName === 'get_info_customer') {
+                usedGetInfoCustomer = true
+              
                 const customer = await prisma.customer.findUnique({
-                  where: { phoneWa },
-                });
+                  where: {
+                    phoneWa
+                  }
+                })
+
 
                 if (!customer) {
                   const payload = {
-                    success: false,
-                    msg: 'No se encontro al cliente en la BD',
+                    exists: false,
+                    customer: null
+                  }
+
+                  return {
+                    tool_call_id: action.id,
+                    output: JSON.stringify(payload)
+                  }
+                }
+
+                const payload = {
+                  exists: true, // o false
+                  customer: {
+                    customer_name: customer.name,
+                    customer_lastname: customer.lastname,
+                    email: customer.email,
+                    phone: customer.phone,
+                    location: customer.location,
+                    company: customer.company ?? '',
+                  }
+                }
+              
+
+                return {
+                  tool_call_id: action.id,
+                  output: JSON.stringify(payload)
+                }
+
+              }
+
+              if (functionName === 'extract_customer_info') {
+
+
+                await this.messageService.createWhatsAppMessage({
+                  to: phoneWa,
+                  body: 'Perfecto, dame un momento en lo que genero tu solicitud...',
+                });
+
+
+                await prisma.message.create({
+                  data: {
+                    role: 'assistant',
+                    content: 'Perfecto, dame un momento en lo que genero tu solicitud...',
+                    chatThreadId,
+                    channel: 'WHATSAPP',
+                    direction: 'OUTBOUND',
+                    to: phoneWa,
+                  },
+                });
+
+
+
+                const clientInfo = JSON.parse(
+                  action.function.arguments,
+                ) as ExtractedData;
+
+                const {
+                  customer_name,
+                  customer_lastname,
+                  email,
+                  phone,
+                  location,
+                  items = [],
+                  file_key,
+                  company,
+                } = clientInfo;
+
+
+
+                newCustomerQuote = await saveCustomerQuote.execute({
+                  name: customer_name,
+                  lastname: customer_lastname,
+                  email,
+                  phone,
+                  phoneWa,
+                  location,
+                  items,
+                  fileKey: file_key,
+                  company
+                });
+
+
+
+                const chatThread = await this.chatThreadRepository.addCustomer(
+                  threadId,
+                  newCustomerQuote!.customerId,
+                );
+
+                const [err, updateQuoteDto] = UpdateQuoteDto.execute({
+                  chatThreadId: chatThread.id,
+                });
+
+                if (!err) {
+                  await this.quoteRepository.updateQuote(
+                    newCustomerQuote!.id,
+                    updateQuoteDto,
+                  );
+                }
+
+                await this.messageService.createWhatsAppMessage({
+                  to: phoneWa,
+                  body: `
+                  Tu solicitud quedó registrada con el número de cotización COT-${newCustomerQuote?.quoteNumber}. Muy pronto el área de Ventas te enviará los precios y tiempos de entrega. Gracias por confiar en nosotros, será un gusto seguir apoyándote
+                `,
+                });
+
+                await prisma.message.create({
+                  data: {
+                    role: 'assistant',
+                    content: `
+                  Tu solicitud quedó registrada con el número de cotización COT-${newCustomerQuote?.quoteNumber}. Muy pronto el área de Ventas te enviará los precios y tiempos de entrega. Gracias por confiar en nosotros, será un gusto seguir apoyándote
+                `,
+                    chatThreadId,
+                    channel: 'WHATSAPP',
+                    direction: 'OUTBOUND',
+                    to: phoneWa,
+                  },
+                });
+
+
+
+                const { summary } = await summarizeConversation.execute(newCustomerQuote.id)
+
+                contactService.sendWhatsApp({
+                  summary,
+                  url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
+                })
+
+                contactService.sendEmail({
+                  summary,
+                  url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
+                })
+
+
+                return {
+                  tool_call_id: action.id,
+                  output: JSON.stringify({
+                    succes: true,
+                    msg: 'Creado correctamente',
+                    quoteNumber: newCustomerQuote?.quoteNumber,
+                  }),
+                };
+              }
+
+              if (functionName === 'update_customer_info') {
+
+
+                await this.messageService.createWhatsAppMessage({
+                  to: phoneWa,
+                  body: 'Vamos a actualizar tus datos',
+                });
+
+                const clientInfo = JSON.parse(
+                  action.function.arguments,
+                ) as UpdatedCustomerData;
+                const { customer_name, customer_lastname, email, phone, location, company } =
+                  clientInfo;
+
+                try {
+                  const customer = await prisma.customer.findUnique({
+                    where: { phoneWa },
+                  });
+
+                  if (!customer) {
+                    const payload = {
+                      success: false,
+                      msg: 'No se encontro al cliente en la BD',
+                    };
+
+                    await this.messageService.createWhatsAppMessage({
+                      to: phoneWa,
+                      body: 'Lo siento, aun no estas registrado con nosotros',
+                    });
+
+                    return {
+                      tool_call_id: action.id,
+                      output: JSON.stringify(payload),
+                    };
+                  }
+
+                  await prisma.customer.update({
+                    where: { phoneWa },
+                    data: {
+                      name: customer_name ?? customer.name,
+                      lastname: customer_lastname ?? customer.lastname,
+                      email: email ?? customer.email,
+                      phone: phone ?? customer.phone,
+                      location: location ?? customer.location,
+                      company: company ?? customer.company
+                    },
+                  });
+
+                  const payload = {
+                    success: true,
+                    msg: 'Actualizado correctamente',
                   };
 
                   await this.messageService.createWhatsAppMessage({
                     to: phoneWa,
-                    body: 'Lo siento, aun no estas registrado con nosotros',
+                    body: 'Listo, tus datos quedaron actualizados ',
                   });
 
                   return {
                     tool_call_id: action.id,
                     output: JSON.stringify(payload),
                   };
+                } catch (error) {
+                  console.log(error);
+
+                  await this.messageService.createWhatsAppMessage({
+                    to: phoneWa,
+                    body:
+                      'Lo siento, hubo un error al actualizar tus datos, lo intentare mas tarde',
+                  });
+
+                  return {
+                    tool_call_id: action.id,
+                    output:
+                      "{success: false, msg:'Error al actualizar al cliente'}",
+                  };
                 }
-
-                await prisma.customer.update({
-                  where: { phoneWa },
-                  data: {
-                    name: customer_name ?? customer.name,
-                    lastname: customer_lastname ?? customer.lastname,
-                    email: email ?? customer.email,
-                    phone: phone ?? customer.phone,
-                    location: location ?? customer.location,
-                  },
-                });
-
-                const payload = {
-                  success: true,
-                  msg: 'Actualizado correctamente',
-                };
-
-                await this.messageService.createWhatsAppMessage({
-                  to: phoneWa,
-                  body: 'Listo, tus datos quedaron actualizados ',
-                });
-
-                return {
-                  tool_call_id: action.id,
-                  output: JSON.stringify(payload),
-                };
-              } catch (error) {
-                console.log(error);
-
-                await this.messageService.createWhatsAppMessage({
-                  to: phoneWa,
-                  body:
-                    'Lo siento, hubo un error al actualizar tus datos, lo intentare mas tarde',
-                });
-
-                return {
-                  tool_call_id: action.id,
-                  output:
-                    "{success: false, msg:'Error al actualizar al cliente'}",
-                };
               }
-            }
 
-            return { tool_call_id: action.id, output: '{success: true}' };
-          }),
-        );
+              return { tool_call_id: action.id, output: '{success: true}' };
+            }),
+          );
 
-        await this.openaiService.submitToolOutputs(
-          runstatus.thread_id,
-          runstatus.id,
-          tool_outputs,
-        );
+          await this.openaiService.submitToolOutputs(
+            runstatus.thread_id,
+            runstatus.id,
+            tool_outputs,
+          );
+        }
+
+        // await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+      if (usedGetInfoCustomer) {
+
+        const text = await this.getLastConversationAsistant(threadId)
+
+        if (text) {
+          await this.messageService.createWhatsAppMessage({
+            to: phoneWa,
+            body: text,
+          });
+
+          await prisma.message.create({
+            data: {
+              role: 'assistant',
+              content: text,
+              chatThreadId,
+              channel: 'WHATSAPP',
+              direction: 'OUTBOUND',
+              to: phoneWa,
+            },
+          });
+        }
+
+      }
 
 
 
-    // 4) Guardar historial (como ya hacías)
-    // const messages = await this.openaiService.getMessageList(threadId);
+      // 4) Guardar historial (como ya hacías)
+      // const messages = await this.openaiService.getMessageList(threadId);
 
-    // await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({
-    //   messages,
-    //   threadId: chatThreadId,
-    // });
+      // await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({
+      //   messages,
+      //   threadId: chatThreadId,
+      // });
 
-    // 5) PDF/correo si se creó una nueva cotización
-    if (!newCustomerQuote) return;
+      // 5) PDF/correo si se creó una nueva cotización
 
-    const summarizeConversation = new SummarizeConversationUseCase(this.quoteRepository, new OpenAiFunctinsService)
 
-    const { summary } = await summarizeConversation.execute(newCustomerQuote.id)
 
-  
+    } catch (error) {
 
-    const contactService = new ContactService(new EmailService(), new WhatsAppNotificationService(this.messageService))
+      console.log(error)
 
-    contactService.sendWhatsApp({
-      summary,
-      url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
-    })
+      throw new Error('[UserQuestionCore]error')
 
-    contactService.sendEmail({
-      summary,
-      url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
-    })
+    } 
+
 
 
     // let fileStream: any;
@@ -375,6 +500,21 @@ export class UserQuestionCoreUseCase {
     // Aquí puedes reactivar todo tu envío de correo / plantillas de WhatsApp
     // como ya lo tenías.
 
+
+  }
+
+  private async getLastConversationAsistant(threadId: string) {
+
+    const messages = await this.openaiService.getMessageList(threadId);
+
+    // Ajusta esto según el shape que te regrese getMessageList
+
+    const ordered = [...messages].sort((a, b) => a.created_at - b.created_at)
+    const lastAssistant = ordered.filter((data) => data.role === 'assistant').at(-1)
+
+
+
+    return lastAssistant.content[0]
 
   }
 }

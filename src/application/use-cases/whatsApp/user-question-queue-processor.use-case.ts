@@ -27,6 +27,7 @@ export class UserQuestionQueueProcessor {
         .execute(phoneWa)
 
 
+    
     if (chatThread.isProcessing) {
       return
     }
@@ -47,7 +48,7 @@ export class UserQuestionQueueProcessor {
           }
         })
 
-        // console.log({ pendings })
+       
 
         if (pendings.length === 0) break;
 

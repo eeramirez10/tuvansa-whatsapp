@@ -11,6 +11,7 @@ interface Options {
   location: string
   createdAt: Date
   phoneWa: string;
+  company:string
 }
 
 
@@ -24,6 +25,8 @@ export class CustomerEntity implements Customer {
   readonly location: string
   readonly createdAt: Date
   readonly phoneWa: string;
+  readonly company:string
+
 
 
   constructor(options: Options) {
@@ -35,6 +38,7 @@ export class CustomerEntity implements Customer {
     this.location = options.location
     this.createdAt = options.createdAt
     this.phoneWa = options.phoneWa
+    this.company = options.company
 
   }
 

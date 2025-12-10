@@ -43,7 +43,7 @@ export class WhatsAppController {
     private customerRepository: CustomerRepository,
     private messageService: MessageService,
     private fileStorageService: FileStorageService,
-   
+
 
   ) {
 
@@ -54,7 +54,7 @@ export class WhatsAppController {
 
     const payload = req.body
 
-    console.log(payload)
+
 
     const {
       MediaContentType0,
@@ -70,18 +70,21 @@ export class WhatsAppController {
 
       if (MessageType === 'text') {
 
+
+
         const { chatThread } = await
           new EnsureChatThreadForPhoneUseCase(
             this.openAIService,
             this.chatThreadRepository)
             .execute(WaId)
 
-        await prisma.pendingMessage.create({
+         await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
             body: Body
           }
         })
+
 
         // await new Promise((resolve) => {
 
@@ -253,6 +256,8 @@ export class WhatsAppController {
     if (existingTimer) {
       clearTimeout(existingTimer)
     }
+
+
 
     const timer = setTimeout(() => {
 
