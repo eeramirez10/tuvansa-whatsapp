@@ -25,19 +25,12 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     })
   }
 
-
-
-
-
-
-
   async updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity> {
     return await prismaClient.quoteItem.update({
       where: { id },
       data: updateQuoteItemDto
     })
   }
-
 
   async getQuote(id: string): Promise<QuoteEntity | null> {
 

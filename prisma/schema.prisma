@@ -159,7 +159,7 @@ model ChatThread {
   clientPhoneNumber String
   status            String    @default("ACTIVE")
   createdAt         DateTime  @default(now())
-  lastInteraction   DateTime? @default(now())
+  lastInteraction   DateTime? @updatedAt
   location          String?
 
   isProcessing Boolean @default(false)
