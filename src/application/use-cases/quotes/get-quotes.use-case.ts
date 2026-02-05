@@ -4,6 +4,7 @@ import { OpenAIService } from '../../../infrastructure/services/openai.service';
 import { OpenAiFunctinsService } from '../../../infrastructure/services/openai-functions.service';
 import { UpdateQuoteItemDto } from "../../../domain/dtos/quotes/update-quote-item.dto";
 import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
+import { SummarizeConversationUseCase } from "../messages/summarize-conversation.use-case";
 
 
 export class GetQuotesUseCase {
@@ -19,10 +20,12 @@ export class GetQuotesUseCase {
     let newQuotes = await Promise.all(
       quotes.items.map(async (quote) => {
 
-      
+        
+
+
         if (quote.chatThread && !quote.summary && quote.chatThread.messages.length > 0) {
 
-       
+
           const messages = quote
             .chatThread
             .messages
@@ -31,8 +34,11 @@ export class GetQuotesUseCase {
               content: mesagge.content,
               createdAt: mesagge.createdAt.toISOString()
             }))
+        
 
-          const summary = await this.openAIService.summarizeConversation(messages)
+          const { summary } = await new SummarizeConversationUseCase(this.quoteRepository, this.openAIService).execute(quote.id)
+
+          // const summary = await this.openAIService.summarizeConversation(messages)
 
           const [, updateQUoteDto] = UpdateQuoteDto.execute({ summary })
 

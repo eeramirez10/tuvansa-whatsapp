@@ -19,20 +19,20 @@ export class WhatsAppRoutes {
 
 
 
-  static routes =():Router => {
+  static routes = (): Router => {
 
     const router = Router()
     const chatThreadDataSource = new ChatThreadPostgresqlDatasource()
     const quoteDataSource = new QuotePostgresqlDatasource()
     const customerDatasource = new CustomerPostgresqlDatasource()
     const chatThreadRepositoryImpl = new ChatThreadRepositoryImpl(chatThreadDataSource)
-    const quoteRepositoryImpl = new   QuoteRepositoryImpl(quoteDataSource)
-    const customerRepositoryImpl = new   CustomerRepositoryImpl(customerDatasource)
+    const quoteRepositoryImpl = new QuoteRepositoryImpl(quoteDataSource)
+    const customerRepositoryImpl = new CustomerRepositoryImpl(customerDatasource)
     const openAiService = new OpenAIService(new TwilioService())
     const s3FileStorageService = new S3FileStorageService()
 
     const whastAppController = new WhatsAppController(
-      openAiService, 
+      openAiService,
       new EmailService(),
       chatThreadRepositoryImpl,
       quoteRepositoryImpl,
@@ -40,13 +40,16 @@ export class WhatsAppRoutes {
       new TwilioService(),
       s3FileStorageService,
     )
-    
+
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))
 
     router.post('/send-email', whastAppController.sendEmail.bind(whastAppController))
+    router.post('/send-message', whastAppController.SendWhatsApp.bind(whastAppController))
+    router.post('/send-template', whastAppController.sendWhatssAppTemplate.bind(whastAppController))
+
 
     return router
-    
+
 
   }
 

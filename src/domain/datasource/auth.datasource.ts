@@ -2,6 +2,7 @@ import { LoginUserDto } from "../dtos/auth/login-user.dto";
 import { UserEntity } from "../entities/user.entity";
 import { CreateUserDto } from '../dtos/auth/create-user.dto';
 import { CheckFieldDto } from '../dtos/auth/check-field.dto';
+import { PaginationResult } from "../entities/pagination-result";
 
 
 export abstract class AuthDatasource {
@@ -11,4 +12,6 @@ export abstract class AuthDatasource {
   abstract create(createUserDto: CreateUserDto): Promise<UserEntity>
 
   abstract checkField(checkFieldDto: CheckFieldDto): Promise<Boolean>
+
+  abstract list(): Promise<PaginationResult<UserEntity>>
 }

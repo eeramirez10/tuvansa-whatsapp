@@ -1,3 +1,4 @@
+import { QuoteEntity } from '../../../domain/entities/quote.entity';
 import { QuoteRepository } from '../../../domain/repositories/quote.repository';
 import { OpenAiFunctinsService } from '../../../infrastructure/services/openai-functions.service';
 
@@ -17,6 +18,25 @@ export class SummarizeConversationUseCase {
 
     const quote = await this.quoteRepository.getQuote(quoteId)
 
+    let summary: string;
+
+    let updatedQuote: QuoteEntity;
+
+    console.log("SummarizeConversationUseCase")
+
+    console.log({ filekey: quote.fileKey })
+
+    if (quote.fileKey) {
+
+      summary = "El cliente adjunto un archivo, procesar el archivo en del detalle para poder verlo"
+
+      updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
+
+      return {
+        summary: updatedQuote.summary
+      }
+    }
+
     const messages = quote.chatThread.messages.map((message) => ({
       role: message.role,
       content: message.content,
@@ -24,13 +44,13 @@ export class SummarizeConversationUseCase {
     }))
 
 
-    const summary = await this.openAiFunctions.summarizeConversation(messages)
+    summary = await this.openAiFunctions.summarizeConversation(messages)
 
-    const updatetQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
+    updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
 
 
     return {
-      summary: updatetQuote.summary
+      summary: updatedQuote.summary
     }
 
 

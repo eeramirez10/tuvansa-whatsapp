@@ -6,7 +6,7 @@ import { LanguageModelService } from "../../../domain/services/language-model.se
 import { MessageService } from "../../../domain/services/message.service";
 import { ExtractedData, UpdatedCustomerData } from "../../../domain/interfaces/customer";
 import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
-import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
+
 import { QuoteEntity } from "../../../domain/entities/quote.entity";
 import { SummarizeConversationUseCase } from "../messages/summarize-conversation.use-case";
 import { OpenAiFunctinsService } from "../../../infrastructure/services/openai-functions.service";
@@ -15,6 +15,7 @@ import { envs } from "../../../config/envs";
 import { EmailService } from "../../../infrastructure/services/mail.service";
 import { WhatsAppNotificationService } from "../../../infrastructure/services/whatsapp-notification.service";
 import { ProductStreamParser } from "../../../infrastructure/services/product-stream-parser.service";
+import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
 
 
 interface CoreOptions {
@@ -22,6 +23,7 @@ interface CoreOptions {
   question: string;     // puede ser varios mensajes concatenados
   threadId: string;     // openAiThreadId
   chatThreadId: string; // UUID interno del ChatThread
+  
 }
 
 const prisma = new PrismaClient

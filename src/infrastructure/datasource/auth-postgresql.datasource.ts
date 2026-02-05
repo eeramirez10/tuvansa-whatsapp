@@ -7,6 +7,7 @@ import { LoginUserDto } from "../../domain/dtos/auth/login-user.dto";
 import { CustomError } from "../../domain/errors/custom-error";
 import { CheckFieldDto } from "../../domain/dtos/auth/check-field.dto";
 import { UserEntity } from "../../domain/entities/user.entity";
+import { PaginationResult } from "../../domain/entities/pagination-result";
 
 
 interface Option {
@@ -27,6 +28,11 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
     private readonly hashPassword: HashFunction = BcryptAdapter.hash,
     private readonly comparePassword: CompareFunction = BcryptAdapter.compare,
   ) { }
+
+
+  list(): Promise<PaginationResult<UserEntity>> {
+    throw new Error("Method not implemented.");
+  }
 
 
 

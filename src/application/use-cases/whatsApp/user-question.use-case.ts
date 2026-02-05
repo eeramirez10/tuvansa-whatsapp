@@ -2,7 +2,6 @@ import { ExtractedData, UpdatedCustomerData, Customer } from '../../../domain/in
 import { ChatThreadRepository } from "../../../domain/repositories/chat-thread.repository";
 import { CustomerRepository } from "../../../domain/repositories/customer.repository";
 import { QuoteRepository } from "../../../domain/repositories/quote.repository";
-import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
 import { SaveThreadUseCase } from './save-tread.use-case';
 import { EmailService } from '../../../infrastructure/services/mail.service';
 import { SaveHistoryChatUseCase } from "../save-history-chat.use-case";
@@ -10,9 +9,9 @@ import { LanguageModelService } from "../../../domain/services/language-model.se
 import { QuoteEntity } from "../../../domain/entities/quote.entity";
 import { FileStorageService } from '../../../domain/services/file-storage.service';
 import { MessageService } from "../../../domain/services/message.service";
-import { SendMailUseCase } from "../send-mail.use-case";
 import { UpdateQuoteDto } from "../../../domain/dtos/quotes/update-quote.dto";
 import { PrismaClient } from "@prisma/client";
+import { SaveCustomerQuoteUseCase } from '../save-customer-quote.use-case';
 
 
 interface Contacts {
@@ -325,7 +324,7 @@ export class UserCuestionUseCase {
 
     const customerQuote = await this.quoteRepository.findByQuoteNumber({ quoteNumber: newCustomerQuote!.quoteNumber });
 
-    const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
+    // const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
 
     const asistantResponse = messages!.filter(q => q.role === 'assistant')[0]
     await this.messageService.createWhatsAppMessage({

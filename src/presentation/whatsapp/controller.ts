@@ -7,23 +7,32 @@ import { UserCuestionUseCase } from "../../application/use-cases/whatsApp/user-q
 import { MessageService } from '../../domain/services/message.service';
 import { LanguageModelService } from "../../domain/services/language-model.service";
 
-
 import extname from 'ext-name'
 import path from "path";
 import url from "url";
 import { FileStorageService } from '../../domain/services/file-storage.service';
 import { SaveMediaFileUseCase } from "../../application/use-cases/file-storage/save-media-file.use-case";
-
 import { EnsureChatThreadForPhoneUseCase } from "../../application/use-cases/whatsApp/ensure-chat-thread-for-phone.use-case";
 import { PrismaClient } from "@prisma/client";
 import { UserQuestionQueueProcessor } from "../../application/use-cases/whatsApp/user-question-queue-processor.use-case";
 import { UserQuestionCoreUseCase } from '../../application/use-cases/whatsApp/user-question-core.use-case';
-import { ContactService } from '../../infrastructure/services/contacts.service';
+
+import { SendMessageRequestDTO } from "../../domain/dtos/whatssapp/send-message-request.dto";
+
+import { WhatsAppNotificationService } from "../../infrastructure/services/whatsapp-notification.service";
+import { WhatsappTemplate } from "../../infrastructure/template/whatsapp/whatsapp-templates";
+import { SendWhatssAppTemplateRequest } from "../../domain/dtos/whatssapp/send-whatss-app-template-request";
+
+
 
 
 enum Message {
   document,
   text
+}
+
+interface SendMessageRequest extends Request {
+  body: SendMessageRequestDTO
 }
 
 const prisma = new PrismaClient
@@ -78,7 +87,7 @@ export class WhatsAppController {
             this.chatThreadRepository)
             .execute(WaId)
 
-         await prisma.pendingMessage.create({
+        await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
             body: Body
@@ -119,12 +128,12 @@ export class WhatsAppController {
       if (MessageType === 'document') {
 
 
-        await this.messageService.createWhatsAppMessage({
-          body: 'Por el momento aun no puedo recibir archivos, pero puedes copiar y pegarlos en el chat para procesarlos.',
-          to: WaId
-        })
+        // await this.messageService.createWhatsAppMessage({
+        //   body: 'Por el momento aun no puedo recibir archivos, pero puedes copiar y pegarlos en el chat para procesarlos.',
+        //   to: WaId
+        // })
 
-        return res.status(202).send('Accepted')
+        // return res.status(202).send('Accepted')
 
 
         if (!ACCEPTED_FORMATS.includes(MediaContentType0)) {
@@ -234,6 +243,51 @@ export class WhatsAppController {
     }
 
 
+  }
+
+
+  SendWhatsApp(req: SendMessageRequest, res: Response) {
+    const [error, sendMessageRequestDTO] = SendMessageRequestDTO.execute({ ...req.body })
+    if (error) {
+      res.status(401).json({ error })
+      return
+    }
+
+    this.messageService
+      .createWhatsAppMessage({
+        body: sendMessageRequestDTO.message,
+        to: sendMessageRequestDTO.to
+      })
+      .then((resp) => {
+        res.json(resp)
+      }).catch((error) => {
+        console.log(error)
+      })
+
+
+  }
+
+  sendWhatssAppTemplate = (req: SendWhatssAppTemplateRequest, res: Response) => {
+
+    const waNotificationService = new WhatsAppNotificationService(this.messageService);
+
+    const body = { ...req.body }
+
+    waNotificationService
+      .sendTemplateMessage(
+        WhatsappTemplate.QUOTE_WEB_NOTIFICATION_ICONS,
+        {
+          to: body.to,
+          quote: { summary: body.summary },
+          url: body.url
+        }
+      )
+      .then(resp => {
+        return res.json(resp)
+      })
+      .catch((error) => {
+        console.log(error)
+      })
   }
 
 

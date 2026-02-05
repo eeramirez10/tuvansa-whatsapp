@@ -16,6 +16,7 @@ export class LoginUserUseCase {
 
     const { id, password, ...rest } = await this.authRepository.login(loginUserDto)
 
+  
     const token = await this.signToken({ id })
 
     if (!token) throw CustomError.internalServer('Error generating token');
