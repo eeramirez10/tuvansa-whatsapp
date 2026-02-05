@@ -19,7 +19,7 @@ export class OpenAiFunctinsService {
     }).join("\n");
 
     const response = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.1-2025-11-13",
       messages: [
         {
           role: "system",
@@ -29,7 +29,10 @@ export class OpenAiFunctinsService {
           role: "user",
           content: `
           Haz un resumen conciso de la siguiente conversación solo pon lo que
-           pidio el cliente para cotizar en resumen y su nombre y como fue la conversacion , omite que contacto a Tueria y valvulas del norte y sus datos personales como telefono , ubicacion, pon el texto son caracteres especiales ni asteriscos pon todo de corrido :\n\n${conversation}
+           pidio el cliente para cotizar en resumen y sin su nombre  , 
+           omite que contacto a Tueria y valvulas del norte y sus datos personales como telefono , 
+           ubicacion, 
+           pon el texto sin caracteres especiales ni asteriscos pon todo de corrido, POR NINGUN MOTIVO pongas saltos de linea  :\n\n${conversation}
           `
         }
       ],

@@ -23,7 +23,7 @@ interface CoreOptions {
   question: string;     // puede ser varios mensajes concatenados
   threadId: string;     // openAiThreadId
   chatThreadId: string; // UUID interno del ChatThread
-  
+
 }
 
 const prisma = new PrismaClient
@@ -185,7 +185,7 @@ export class UserQuestionCoreUseCase {
 
               if (functionName === 'get_info_customer') {
                 usedGetInfoCustomer = true
-              
+
                 const customer = await prisma.customer.findUnique({
                   where: {
                     phoneWa
@@ -216,7 +216,7 @@ export class UserQuestionCoreUseCase {
                     company: customer.company ?? '',
                   }
                 }
-              
+
 
                 return {
                   tool_call_id: action.id,
@@ -476,7 +476,7 @@ export class UserQuestionCoreUseCase {
 
       throw new Error('[UserQuestionCore]error')
 
-    } 
+    }
 
 
 

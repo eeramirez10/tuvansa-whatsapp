@@ -37,12 +37,18 @@ export class SummarizeConversationUseCase {
       }
     }
 
+    const hoursAgo = 1;
+
+    const cuttoffDate = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+
+
     const messages = quote.chatThread.messages.map((message) => ({
       role: message.role,
       content: message.content,
       createdAt: message.createdAt.toISOString()
-    }))
+    })).filter((msg) => new Date(msg.createdAt) >= cuttoffDate)
 
+    console.log({messages})
 
     summary = await this.openAiFunctions.summarizeConversation(messages)
 

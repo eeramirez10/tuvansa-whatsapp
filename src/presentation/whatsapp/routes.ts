@@ -8,10 +8,9 @@ import { CustomerPostgresqlDatasource } from "../../infrastructure/datasource/cu
 import { CustomerRepositoryImpl } from '../../infrastructure/repositories/customer.repository-impl';
 import { OpenAIService } from "../../infrastructure/services/openai.service";
 import { EmailService } from "../../infrastructure/services/mail.service";
-import { MessageService } from "../../domain/services/message.service";
 import { TwilioService } from "../../infrastructure/services/twilio.service";
 import { S3FileStorageService } from '../../infrastructure/services/s3-file-storage.service';
-import { ContactService } from "../../infrastructure/services/contacts.service";
+
 
 
 
