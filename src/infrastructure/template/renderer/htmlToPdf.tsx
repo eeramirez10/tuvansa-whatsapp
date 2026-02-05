@@ -1,14 +1,27 @@
-// src/infrastructure/pdf/renderer/htmlToPdf.ts
 import puppeteer from 'puppeteer';
 
 export interface HtmlToPdfOptions {
   timeoutMs?: number;
 }
 
-export async function htmlToPdf(html: string, opts: HtmlToPdfOptions = {}): Promise<Uint8Array<ArrayBufferLike>> {
+export async function htmlToPdf(
+  html: string,
+  opts: HtmlToPdfOptions = {}
+): Promise<Uint8Array<ArrayBufferLike>> {
+  const executablePath =
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    '/app/.chrome-for-testing/chrome-linux64/chrome'; // ruta del buildpack
+
   const browser = await puppeteer.launch({
-    headless: 'shell',
-    args: ['--no-sandbox', '--font-render-hinting=none'],
+    headless: true,
+    executablePath,
+    args: [
+      '--headless',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
   });
 
   try {
@@ -22,8 +35,7 @@ export async function htmlToPdf(html: string, opts: HtmlToPdfOptions = {}): Prom
 
     const pdf = await page.pdf({
       printBackground: true,
-      preferCSSPageSize: true, // respeta @page del CSS
-      // Si quieres forzar aquí: format: 'A4', margin: { top: '12mm', right: '12mm', bottom: '12mm', left: '12mm' }
+      preferCSSPageSize: true,
     });
 
     await page.close();

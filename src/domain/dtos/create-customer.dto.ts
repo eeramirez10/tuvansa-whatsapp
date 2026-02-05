@@ -5,5 +5,5 @@ export interface CreateCustomerDto {
   phone: string
   phoneWa: string
   location: string
-
+  company:string
 }

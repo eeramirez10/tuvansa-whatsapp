@@ -11,7 +11,6 @@ import path from "path";
 import { createWriteStream, existsSync, mkdirSync } from "fs";
 import { Buffer } from "node:buffer";
 
-
 interface SendWhatsAppMessageOptions {
   body?: string
   to: string
@@ -125,14 +124,12 @@ export class TwilioService implements MessageService {
 
     const { body, to, mediaUrl, contentSid, contentVariables } = options
 
-
-
     const message = await this.client.messages.create({
       body: body,
       to: `whatsapp:+${to}`, // Text your number
       from: `whatsapp:${envs.TWILIO_NUMBER}`, // From a valid Twilio number
       mediaUrl: mediaUrl,
-      forceDelivery: true,
+      // forceDelivery: true,
       contentSid,
       contentVariables
 

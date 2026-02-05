@@ -1,0 +1,28 @@
+### Login
+POST  http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email":"",
+  "password":""
+}
+
+
+### Renew token
+GET  http://localhost:3000/api/auth/renew
+Authorization: Bearer Token
+
+
+### Register User
+POST  http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name":"",
+  "lastname":"",
+  "email":"",
+  "phone":"",
+  "password":"",
+  "branchId":"",
+  "username":""
+}

@@ -89,8 +89,6 @@ export class AuthController {
       })
   }
 
-  
-
 
   checkField = (req: Request, res: Response) => {
 
@@ -117,5 +115,7 @@ export class AuthController {
       })
   }
 
+
+  
 
 }

@@ -16,6 +16,7 @@ export interface ExtractedData {
   location: string
   items: Item[]
   file_key?: string
+  company:string
 }
 
 
@@ -26,5 +27,6 @@ export interface UpdatedCustomerData {
   email: string
   phone: string
   location: string
+  company: string
 
 }

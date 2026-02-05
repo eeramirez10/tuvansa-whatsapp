@@ -16,5 +16,6 @@ export const envs = {
   AWS_SECRET_ACCESS_KEY: get('AWS_SECRET_ACCESS_KEY').required().asString(),
   AWS_BUCKET_NAME: get('AWS_BUCKET_NAME').required().asString(),
   AWS_REGION: get('AWS_REGION').required().asString(),
-  TWILIO_NUMBER:get('TWILIO_NUMBER').required().asString()
+  TWILIO_NUMBER:get('TWILIO_NUMBER').required().asString(),
+  API_URL: get('API_DEV_URL').required().asString()
 } 

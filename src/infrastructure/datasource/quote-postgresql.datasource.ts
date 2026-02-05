@@ -25,19 +25,12 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     })
   }
 
-
-
-
-
-
-
   async updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity> {
     return await prismaClient.quoteItem.update({
       where: { id },
       data: updateQuoteItemDto
     })
   }
-
 
   async getQuote(id: string): Promise<QuoteEntity | null> {
 
@@ -50,6 +43,11 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         include: {
           customer: true,
           items: true,
+          chatThread: {
+            include: {
+              messages: true
+            }
+          }
         }
       })
 
@@ -132,9 +130,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
       throw Error('Hubo un error en Quote revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
-    }
+    } 
   }
 
 
@@ -195,15 +191,14 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
       throw Error('Hubo un error en Quote revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
-    }
+    } 
 
 
   }
 
 
   async addQuoteItems(addQuoteItems: AddQuoteItemsDto): Promise<QuoteItemEntity> {
+
 
     try {
 
@@ -215,13 +210,13 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
     } catch (error) {
 
-      console.log(error)
+      if( error instanceof Error){
+        console.log(error)
+      }
 
       throw Error('Hubo un error en Quote revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
-    }
+    } 
 
   }
 

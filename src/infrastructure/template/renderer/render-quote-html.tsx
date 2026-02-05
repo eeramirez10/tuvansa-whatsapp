@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { QuotePrintProps } from '../pdf/types';
-import { QuotePrintApp } from '../pdf/QuotePrintApp.jsx';
+import { QuotePrintApp } from '../pdf/QuotePrintApp';
 
 
 

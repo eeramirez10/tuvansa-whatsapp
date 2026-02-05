@@ -103,6 +103,7 @@ model Customer {
   phone     String   @unique
   phoneWa   String   @unique
   location  String
+  company   String?
   createdAt DateTime @default(now())
 
   quotes      Quote[]
@@ -158,7 +159,7 @@ model ChatThread {
   clientPhoneNumber String
   status            String    @default("ACTIVE")
   createdAt         DateTime  @default(now())
-  lastInteraction   DateTime? @default(now())
+  lastInteraction   DateTime? @updatedAt
   location          String?
 
   isProcessing Boolean @default(false)

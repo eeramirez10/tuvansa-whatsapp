@@ -8,7 +8,7 @@ POST http://localhost:3000/api/threads/messages?pageSize=100
 Content-Type: application/json
 
 {
-  "threadId":"adda347e-6302-4f58-9e3f-3bb60ff9dd9c"
+  "threadId":""
 }
 
 ### Get by id

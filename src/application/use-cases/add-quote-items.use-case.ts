@@ -24,14 +24,7 @@ export class AddQuoteItemsUseCase {
     const { description, ean, codigo, price, cost, quoteId, quantity, um } = options
 
     return this.quoteRepository.addQuoteItems({
-      description,
-      ean,
-      codigo,
-      price,
-      cost,
-      quoteId,
-      quantity,
-      um
+      ...options
     })
 
   }

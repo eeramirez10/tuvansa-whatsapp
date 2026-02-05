@@ -93,6 +93,7 @@ export class GetQuoteDisplayUseCase {
             phone: quote.customer.phone ?? null,
             email: quote.customer.email ?? null,
             location: quote.customer.location ?? null,
+            company: quote.customer.company ?? null
           },
           items: qItems,
           totals: {
@@ -245,7 +246,7 @@ export class GetQuoteDisplayUseCase {
       }))
       : undefined;
 
-    const res: DisplayResult = {
+    const res = {
       source: 'VERSION',
       resolution: { reason, usedVersionId: version.id },
       quote: {

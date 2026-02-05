@@ -68,11 +68,28 @@ export class S3FileStorageService implements FileStorageService {
 
 
   async generatePresignedUrl(key: string, expiresInSec = 3600): Promise<string> {
+
+    const isPdf = /\.pdf$/i.test(key);
+    const isCsv = /\.csv$/i.test(key);
+    const isXls = /\.xls$/i.test(key);
+
+    const contentType = isPdf
+      ? 'application/pdf'
+      : isCsv
+        ? 'text/csv'
+        : isXls
+          ? 'application/vnd.ms-excel'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    const disposition = isPdf
+      ? `inline; filename="${key}"`
+      : `attachment; filename="${key}"`;
+
     const cmd = new GetObjectCommand({
       Bucket: envs.AWS_BUCKET_NAME,
       Key: key,
-      ResponseContentDisposition: `inline; filename="${key}"`,
-      ResponseContentType: 'application/pdf',
+      ResponseContentDisposition: disposition,
+      ResponseContentType: contentType,
     });
     return await getSignedUrl(this.client, cmd, { expiresIn: expiresInSec });
   }

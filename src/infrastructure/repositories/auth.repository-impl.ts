@@ -2,10 +2,9 @@ import { AuthDatasource } from "../../domain/datasource/auth.datasource";
 import { CheckFieldDto } from "../../domain/dtos/auth/check-field.dto";
 import { CreateUserDto } from "../../domain/dtos/auth/create-user.dto";
 import { LoginUserDto } from "../../domain/dtos/auth/login-user.dto";
-
-
 import { AuthRepository } from "../../domain/repositories/auth.repository";
 import { UserEntity } from '../../domain/entities/user.entity';
+import { PaginationResult } from "../../domain/entities/pagination-result";
 
 export class AuthRepositoryImpl implements AuthRepository {
 
@@ -13,7 +12,7 @@ export class AuthRepositoryImpl implements AuthRepository {
 
 
   checkField(checkFieldDto: CheckFieldDto): Promise<Boolean> {
-   return this.authDatasource.checkField(checkFieldDto)
+    return this.authDatasource.checkField(checkFieldDto)
   }
 
   login(loginUserDto: LoginUserDto): Promise<UserEntity> {
@@ -22,6 +21,11 @@ export class AuthRepositoryImpl implements AuthRepository {
   create(createUserDto: CreateUserDto): Promise<UserEntity> {
     return this.authDatasource.create(createUserDto)
   }
+
+  list(): Promise<PaginationResult<UserEntity>> {
+    throw new Error("Method not implemented.");
+  }
+
 
 
 }

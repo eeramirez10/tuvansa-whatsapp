@@ -21,11 +21,16 @@ export class EnsureChatThreadForPhoneUseCase {
 
     let chatThread = await this.chatThreadRepository.findByPhone(phoneWa)
 
+
+
     if (!chatThread) {
       const threadId = await this.openaiService.createThread()
 
       chatThread = await this.chatThreadRepository.createThread({ clientPhoneNumber: phoneWa, threadId })
     }
+
+
+    await this.chatThreadRepository.setProcessing(chatThread.id, false)
 
 
     return {

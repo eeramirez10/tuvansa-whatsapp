@@ -130,12 +130,7 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
       throw Error('Hubo un error en ChatThread revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
     }
-
-
-
 
   }
 
@@ -155,10 +150,7 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
       throw Error('Hubo un error en ChatThread revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
     }
-
   }
 
   async addMessage(addMessageOptions: AddMessageDto): Promise<MessageEntity> {
@@ -183,9 +175,7 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
 
       throw Error('Hubo un error en ChatThread revisar logs')
 
-    } finally {
-      prismaClient.$disconnect()
-    }
+    } 
 
   }
 

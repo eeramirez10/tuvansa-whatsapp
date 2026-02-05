@@ -26,6 +26,7 @@ export abstract class LanguageModelService  {
   abstract getMessageList(threadId: string): Promise<{
     role: "user" | "assistant";
     content: any[];
+    created_at: number
   }[]>
 
   abstract  streamMessageToWhatsApp(options: {

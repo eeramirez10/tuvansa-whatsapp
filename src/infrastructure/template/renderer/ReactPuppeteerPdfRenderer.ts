@@ -29,15 +29,15 @@ export class ReactPuppeteerPdfRenderer implements PdfRenderer {
     private readonly company: CompanyDefaults,
     private readonly terms: TermsDefaults = {},
     private readonly branding: BrandingDefaults = { showBorders: true }
-  ) {}
+  ) { }
 
   async renderQuoteVersion(
     version: QuoteVersionEntity,
     items: QuoteVersionItemEntity[],
-    quote:QuoteEntity,
+    quote: QuoteEntity,
     opts?: { watermarkDraft?: boolean }
   ): Promise<Uint8Array<ArrayBufferLike>> {
-    const props = this.mapToProps(version, items,quote, !!opts?.watermarkDraft);
+    const props = this.mapToProps(version, items, quote, !!opts?.watermarkDraft);
     const html = renderQuoteHTML(props);
     // Si quieres más nitidez, ajusta scale dentro de htmlToPdf o crea una variante con opciones
     const pdf = await htmlToPdf(html);
@@ -47,7 +47,7 @@ export class ReactPuppeteerPdfRenderer implements PdfRenderer {
   private mapToProps(
     v: QuoteVersionEntity,
     items: QuoteVersionItemEntity[],
-    quote:QuoteEntity,
+    quote: QuoteEntity,
     watermarkDraft: boolean
   ): QuotePrintProps {
     const subtotal = Number(v.subtotal ?? 0);
@@ -70,7 +70,7 @@ export class ReactPuppeteerPdfRenderer implements PdfRenderer {
         website: this.company.website,
       },
       customer: {
-        name:( v.customerSnapshot?.name) ?? '',
+        name: (v.customerSnapshot?.name) ?? '',
         lastname: v.customerSnapshot?.lastname ?? '',
         phone: v.customerSnapshot?.phone ?? '',
         email: v.customerSnapshot?.email ?? '',
@@ -83,14 +83,14 @@ export class ReactPuppeteerPdfRenderer implements PdfRenderer {
         ean: it.ean ?? '',
         codigo: it.codigo ?? '',
         um: it.um ?? 'UNIT',
-        quantity: this.numToStr(it.quantity),
-        unitPrice: this.numToStr(it.price ?? 0),
-        lineTotal: this.numToStr(it.lineTotal ?? (it.price ?? 0) * it.quantity),
+        quantity: this.numToStr(+it.quantity),
+        unitPrice: this.numToStr(it.price ? +it.price : 0),
+        lineTotal: this.numToStr(!it.lineTotal ?  ((it.price ? +it.price : 0) * +it.quantity) : +it.lineTotal ),
       })),
       totals: {
         currency: v.currency ?? 'MXN',
         subtotal: this.numToStr(subtotal),
-        taxRate: this.numToStr(v.taxRate ?? 0.16),
+        taxRate: this.numToStr(v.taxRate ? +v.taxRate : 0.16),
         taxTotal: this.numToStr(taxTotal),
         grandTotal: this.numToStr(grandTotal),
       },

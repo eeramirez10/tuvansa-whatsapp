@@ -13,6 +13,9 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
 
 
 
+
+
+
   buildIdempotencyKey(input: BuildIdempotencyKeyOptions): string {
     const raw = `${input.to}|${input.quoteVersionId}|${input.artifactId}|${input.fileKey}`;
     return crypto.createHash("sha256").update(raw).digest("hex");
@@ -46,11 +49,14 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
       },
     });
   }
-  markSent(id: string, providerMessageSid: string): Promise<void> {
+
+  markSent(id: string, providerMessageSid: string): Promise<MessageEntity> {
     throw new Error("Method not implemented.");
   }
-  updateStatusByProviderSid(providerMessageSid: string, status: string, extra?: any): Promise<void> {
+  updateStatusByProviderSid(providerMessageSid: string, status: string, extra?: any): Promise<MessageEntity> {
     throw new Error("Method not implemented.");
   }
+
+
 
 }
