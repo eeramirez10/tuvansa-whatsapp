@@ -11,7 +11,7 @@ interface BranchEntityOptions {
 }
 
 
-export class BranchEntity implements Branch {
+export class BranchEntity  {
 
 
   name: string;

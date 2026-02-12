@@ -15,7 +15,7 @@ interface ChatThreadOptions {
   isProcessing: boolean;
 }
 
-export class ChatThreadEntity implements ChatThread {
+export class ChatThreadEntity  {
   id: string;
   openAiThreadId: string;
   clientPhoneNumber: string;

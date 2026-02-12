@@ -16,7 +16,7 @@ interface Options {
 
 
 
-export class CustomerEntity implements Customer {
+export class CustomerEntity  {
   readonly id: string
   readonly name: string
   readonly lastname: string
