@@ -165,7 +165,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
 
   async createQuote(createQuoteDto: CreateQuoteDto): Promise<QuoteEntity> {
 
-    const { customerId, fileKey, threadId } = createQuoteDto
+    const { customerId, fileKey, threadId, branchId } = createQuoteDto
 
 
     try {
@@ -177,7 +177,8 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           quoteNumber,
           customerId,
           fileKey,
-          chatThreadId: threadId
+          chatThreadId: threadId,
+          branchId
         },
         include: {
           customer: true,

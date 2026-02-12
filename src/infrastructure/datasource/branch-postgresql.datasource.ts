@@ -14,7 +14,8 @@ export class BranchPostgresqlDatasource implements BranchDatasource {
     return prismaClient.branch.findUnique({
       where: {
         id
-      }
+      },
+
     })
   }
 
@@ -25,7 +26,11 @@ export class BranchPostgresqlDatasource implements BranchDatasource {
     return await prismaClient.branch.create({ data: rest })
   }
   async getBranchs(): Promise<BranchEntity[]> {
-    return await prismaClient.branch.findMany()
+    return await prismaClient.branch.findMany({
+      orderBy: {
+        name: 'asc'
+      }
+    })
   }
 
 }

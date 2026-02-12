@@ -27,10 +27,7 @@ export class UserQuestionQueueProcessor {
         .execute(phoneWa)
 
 
-    
-    if (chatThread.isProcessing) {
-      return
-    }
+    if (chatThread.isProcessing) return;
 
     await this.chatThreadRepository.setProcessing(chatThread.id, true)
 
@@ -48,7 +45,7 @@ export class UserQuestionQueueProcessor {
           }
         })
 
-       
+
 
         if (pendings.length === 0) break;
 
@@ -64,7 +61,13 @@ export class UserQuestionQueueProcessor {
         })
 
         const combinedQuestion = pendings
-          .map((p) => p.body.trim())
+          .map((p) => {
+            if (p.fileKey) {
+              
+              return `He adjuntado un archivo: ${p.fileKey}`;
+            }
+            return p.body?.trim() || '';
+          })
           .filter((p) => p.length > 0)
           .join('\n')
 

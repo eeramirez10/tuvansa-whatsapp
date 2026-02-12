@@ -53,9 +53,16 @@ export class OpenAIService implements LanguageModelService {
 
 
   async checkStatus(threadId: string, runId: string) {
-    const runStatus = await this.openai.beta.threads.runs.retrieve(threadId, runId);
-    // console.log({ status: runStatus.status });
-    return runStatus;
+
+    try {
+      const runStatus = await this.openai.beta.threads.runs.retrieve(threadId, runId);
+      // console.log({ status: runStatus.status });
+      return runStatus;
+
+    } catch (error) {
+      console.log({ error })
+    }
+
   }
 
   async submitToolOutputs(threadId: string, runId: string, toolOutputs: OpenAI.Beta.Threads.Runs.RunSubmitToolOutputsParams.ToolOutput[]) {

@@ -1,6 +1,13 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import { get } from 'env-var'
 
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
+dotenv.config({ path: envFile })
+
+
+const apiUrl = process.env.NODE_ENV === 'production'
+  ? get('API_PROD_URL').required().asString()
+  : get('API_DEV_URL').required().asString()
 
 export const envs = {
   PORT: get('PORT').required().asPortNumber(),
@@ -17,5 +24,5 @@ export const envs = {
   AWS_BUCKET_NAME: get('AWS_BUCKET_NAME').required().asString(),
   AWS_REGION: get('AWS_REGION').required().asString(),
   TWILIO_NUMBER:get('TWILIO_NUMBER').required().asString(),
-  API_URL: get('API_DEV_URL').required().asString()
+  API_URL: apiUrl
 } 

@@ -4,7 +4,8 @@ import { QuoteRepository } from '../../domain/repositories/quote.repository';
 interface Options {
   customerId: string
   fileKey?: string
-  threadId?:string
+  threadId?: string
+  branchId?: string
 }
 
 export class SaveQuoteUseCase {
@@ -14,10 +15,10 @@ export class SaveQuoteUseCase {
 
 
   async execute(options: Options) {
-    const { customerId, fileKey, threadId } = options
-    const newQuote = await this.quoteRepository.createQuote({ customerId, fileKey, threadId })
+    const { customerId, fileKey, threadId, branchId } = options
+    const newQuote = await this.quoteRepository.createQuote({ customerId, fileKey, threadId, branchId })
 
-   return newQuote
+    return newQuote
 
   }
 

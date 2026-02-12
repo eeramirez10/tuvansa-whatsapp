@@ -16,43 +16,47 @@ type SendPropsType = {
 
 export class ContactService {
 
-  private readonly contacts: Array<Contact> = [
-    {
-      phone: '5215579044897',
-      name: 'German Barranco',
-      email: "gbarranco@tuvansa.com.mx"
-    },
-    {
-      phone: '5215541142762',
-      name: 'Erick',
-      email: "eeramirez@tuvansa.com.mx"
-    },
-    {
-      phone: '5216243828879',
-      name: 'Luis Quintero',
-      email: "lquintero@tuvansa.com.mx"
-    },
-    {
-      phone: '525541141306',
-      name: 'Roy Grinberg',
-      email: "rgrinberg@tuvansa.com.mx"
-    },
-    {
-      phone: '525522406714',
-      name: 'Marcos Avalos',
-      email: "mavalos@tuvansa.com.mx"
-    },
-    {
-      phone: "528116603993",
-      name: "Alejandro Lozano",
-      email: "alozano@tuvansa.com.mx"
-    },
-    {
-      phone: "5215544129884",
-      name: "Christian Gonzalez",
-      email: "cgonzalez@tuvansa.com.mx"
-    }
-  ]
+  private readonly contacts: Array<Contact> =
+
+
+    [
+
+      {
+        phone: '5215579044897',
+        name: 'German Barranco',
+        email: "gbarranco@tuvansa.com.mx"
+      },
+      {
+        phone: '5215541142762',
+        name: 'Erick',
+        email: "eeramirez@tuvansa.com.mx"
+      },
+      {
+        phone: '5216243828879',
+        name: 'Luis Quintero',
+        email: "lquintero@tuvansa.com.mx"
+      },
+      {
+        phone: '525541141306',
+        name: 'Roy Grinberg',
+        email: "rgrinberg@tuvansa.com.mx"
+      },
+      {
+        phone: '525522406714',
+        name: 'Marcos Avalos',
+        email: "mavalos@tuvansa.com.mx"
+      },
+      {
+        phone: "528116603993",
+        name: "Alejandro Lozano",
+        email: "alozano@tuvansa.com.mx"
+      },
+      {
+        phone: "5215544129884",
+        name: "Christian Gonzalez",
+        email: "cgonzalez@tuvansa.com.mx"
+      }
+    ]
 
   constructor(
     private readonly emailService: EmailService,

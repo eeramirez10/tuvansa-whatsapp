@@ -18,6 +18,7 @@ interface Options {
   fileKey?: string
   threadId?: string
   company?:string
+  branchId?:string
 }
 
 
@@ -37,7 +38,8 @@ export class SaveCustomerQuoteUseCase {
       items = [],
       fileKey,
       threadId,
-      company
+      company,
+      branchId
     } = options
 
     const createCustomer = await new CreateCustomerUseCase(this.customerRepository).execute({
@@ -47,7 +49,7 @@ export class SaveCustomerQuoteUseCase {
       phone,
       phoneWa,
       location,
-      company
+      company,
     })
 
 
@@ -57,7 +59,8 @@ export class SaveCustomerQuoteUseCase {
       .execute({
         customerId: createCustomer.id,
         fileKey,
-        threadId
+        threadId,
+        branchId
       })
 
 

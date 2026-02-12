@@ -16,6 +16,10 @@ import { EmailService } from "../../../infrastructure/services/mail.service";
 import { WhatsAppNotificationService } from "../../../infrastructure/services/whatsapp-notification.service";
 import { ProductStreamParser } from "../../../infrastructure/services/product-stream-parser.service";
 import { SaveCustomerQuoteUseCase } from "../save-customer-quote.use-case";
+import { ProcessFileForQuoteUseCase } from "../file/process-file-for-quote.use-case";
+import { FileStorageService } from '../../../domain/services/file-storage.service';
+import { FileRepository } from "../../../domain/repositories/file.repository";
+import { FileDatasource } from '../../../domain/datasource/file.datasource';
 
 
 interface CoreOptions {
@@ -28,7 +32,7 @@ interface CoreOptions {
 
 const prisma = new PrismaClient
 
-export type FunctionNameType = 'extract_customer_info' | 'update_customer_info' | 'get_info_customer';
+export type FunctionNameType = 'extract_customer_info' | 'update_customer_info' | 'get_info_customer' | 'get_branches' | 'process_file_for_quote';
 
 export class UserQuestionCoreUseCase {
 
@@ -38,6 +42,8 @@ export class UserQuestionCoreUseCase {
     private readonly quoteRepository: QuoteRepository,
     private readonly customerRepository: CustomerRepository,
     private readonly messageService: MessageService,
+    private readonly fileRepository: FileRepository,
+    private readonly fileStorageService: FileStorageService
 
   ) { }
 
@@ -79,6 +85,9 @@ export class UserQuestionCoreUseCase {
 
       // STREAMING: respondemos por cada salto de línea para que el cliente vea movimiento
       let buffer = '';
+      let nonProductBuffer = '';
+      let nonProductUseNewlines = false;
+      let lastLineWasBullet = false;
 
       for await (const event of stream) {
         if (event.event !== 'thread.message.delta') continue;
@@ -90,28 +99,59 @@ export class UserQuestionCoreUseCase {
 
           let idx: number;
           while ((idx = buffer.indexOf('\n')) !== -1) {
-            const line = buffer.slice(0, idx).trim();
+            const rawLine = buffer.slice(0, idx);
+            const line = rawLine.trim();
+
+            // Detectar líneas vacías ANTES de filtrarlas
+            if (rawLine.trim() === '') {
+              nonProductUseNewlines = true;
+              lastLineWasBullet = false;
+            }
 
             if (line) {
               const { isProductLine, completedIndex } = parser.processLine(line);
 
               // Si NO es línea de producto → la mandas tal cual
               if (!isProductLine) {
-                await this.messageService.createWhatsAppMessage({ to: phoneWa, body: line });
-                await prisma.message.create({
-                  data: {
-                    role: 'assistant',
-                    content: line,
-                    chatThreadId,
-                    channel: 'WHATSAPP',
-                    direction: 'OUTBOUND',
-                    to: phoneWa,
-                  },
-                });
+                const isBullet = /^([•*-]|\d+[).])/.test(line);
+
+                if (isBullet) {
+                  nonProductUseNewlines = true;
+                  // Si la línea anterior también era bullet, agregar línea en blanco
+                  if (lastLineWasBullet) {
+                    nonProductBuffer += '\n';
+                  }
+                  lastLineWasBullet = true;
+                } else {
+                  lastLineWasBullet = false;
+                }
+
+                const separator = nonProductBuffer
+                  ? (nonProductUseNewlines ? '\n' : ' ')
+                  : '';
+                nonProductBuffer = `${nonProductBuffer}${separator}${line}`;
               }
 
 
               if (completedIndex != null) {
+                if (nonProductBuffer) {
+                  await this.messageService.createWhatsAppMessage({
+                    to: phoneWa,
+                    body: nonProductBuffer,
+                  });
+                  await prisma.message.create({
+                    data: {
+                      role: 'assistant',
+                      content: nonProductBuffer,
+                      chatThreadId,
+                      channel: 'WHATSAPP',
+                      direction: 'OUTBOUND',
+                      to: phoneWa,
+                    },
+                  });
+                  nonProductBuffer = '';
+                  nonProductUseNewlines = false;
+                }
                 const bloque = parser.formatProduct(completedIndex);
                 if (bloque) {
                   await this.messageService.createWhatsAppMessage({ to: phoneWa, body: bloque });
@@ -138,28 +178,49 @@ export class UserQuestionCoreUseCase {
       const remainder = buffer.trim();
       console.log({ remainder })
       if (remainder) {
+        const trimmedRemainder = remainder.trim();
+        const shouldPreserveLineBreaks =
+          trimmedRemainder === '' ||
+          /^([•*-]|\d+[).])/.test(trimmedRemainder);
+        if (shouldPreserveLineBreaks) {
+          nonProductUseNewlines = true;
+        }
+        const separator = nonProductBuffer
+          ? (nonProductUseNewlines ? '\n' : ' ')
+          : '';
+        nonProductBuffer = `${nonProductBuffer}${separator}${remainder}`;
+      }
+
+      if (nonProductBuffer) {
         await this.messageService.createWhatsAppMessage({
           to: phoneWa,
-          body: remainder,
+          body: nonProductBuffer,
         });
 
         await prisma.message.create({
           data: {
             role: 'assistant',
-            content: remainder,
+            content: nonProductBuffer,
             chatThreadId,
             channel: 'WHATSAPP',
             direction: 'OUTBOUND',
             to: phoneWa,
           },
         });
+        nonProductUseNewlines = false;
       }
 
 
 
 
       while (true) {
+
+
         const runstatus = await this.openaiService.checkStatus(threadId, runId);
+
+        console.log(runstatus.last_error)
+
+
 
         if (runstatus.status === 'completed') break;
 
@@ -181,7 +242,7 @@ export class UserQuestionCoreUseCase {
               const functionName: FunctionNameType =
                 action.function.name as FunctionNameType;
 
-
+              console.log({ functionName })
 
               if (functionName === 'get_info_customer') {
                 usedGetInfoCustomer = true
@@ -192,6 +253,7 @@ export class UserQuestionCoreUseCase {
                   }
                 })
 
+                console.log({ customer })
 
                 if (!customer) {
                   const payload = {
@@ -206,7 +268,7 @@ export class UserQuestionCoreUseCase {
                 }
 
                 const payload = {
-                  exists: true, // o false
+                  exists: true,
                   customer: {
                     customer_name: customer.name,
                     customer_lastname: customer.lastname,
@@ -216,6 +278,8 @@ export class UserQuestionCoreUseCase {
                     company: customer.company ?? '',
                   }
                 }
+
+                console.log({ payload })
 
 
                 return {
@@ -260,6 +324,7 @@ export class UserQuestionCoreUseCase {
                   items = [],
                   file_key,
                   company,
+                  branch_id
                 } = clientInfo;
 
 
@@ -273,7 +338,8 @@ export class UserQuestionCoreUseCase {
                   location,
                   items,
                   fileKey: file_key,
-                  company
+                  company,
+                  branchId: branch_id
                 });
 
 
@@ -318,6 +384,17 @@ export class UserQuestionCoreUseCase {
 
                 const { summary } = await summarizeConversation.execute(newCustomerQuote.id)
 
+                if (phoneWa === "5215541142762") {
+                  return {
+                    tool_call_id: action.id,
+                    output: JSON.stringify({
+                      succes: true,
+                      msg: 'Creado correctamente',
+                      quoteNumber: newCustomerQuote?.quoteNumber,
+                    }),
+                  }
+                }
+
                 contactService.sendWhatsApp({
                   summary,
                   url: `${envs.API_URL}/quotes/${newCustomerQuote.id}`
@@ -341,7 +418,7 @@ export class UserQuestionCoreUseCase {
 
               if (functionName === 'update_customer_info') {
 
-
+                usedGetInfoCustomer = true
                 await this.messageService.createWhatsAppMessage({
                   to: phoneWa,
                   body: 'Vamos a actualizar tus datos',
@@ -418,56 +495,88 @@ export class UserQuestionCoreUseCase {
                 }
               }
 
+
+
+              if (functionName === 'get_branches') {
+
+                usedGetInfoCustomer = true
+
+                const branches = await prisma.branch.findMany({
+                  select: {
+                    id: true,
+                    name: true,
+                    address: true
+                  }
+                })
+
+                return {
+                  tool_call_id: action.id,
+                  output: JSON.stringify(branches)
+                }
+              }
+
+              if (functionName === 'process_file_for_quote') {
+                usedGetInfoCustomer = true
+
+                const { file_key } = JSON.parse(action.function.arguments);
+
+                await new ProcessFileForQuoteUseCase(this.fileStorageService, this.fileRepository)
+                  .execute({ fileKey: file_key, chatThreadId });
+
+                return {
+                  tool_call_id: action.id,
+                  output: JSON.stringify({
+                    success: true,
+                    message: `Archivo ${file_key} procesado correctamente`
+                  })
+                };
+
+                // Agregar resultado al thread
+                // await this.openaiService.submitToolResult(threadId, toolResult);
+              }
+
               return { tool_call_id: action.id, output: '{success: true}' };
             }),
           );
+
+          console.log({ tool_outputs })
 
           await this.openaiService.submitToolOutputs(
             runstatus.thread_id,
             runstatus.id,
             tool_outputs,
           );
+
+
         }
 
-        // await new Promise((resolve) => setTimeout(resolve, 1000));
+
+
+        await new Promise((resolve) => setTimeout(resolve, 3500));
       }
 
-      if (usedGetInfoCustomer) {
+      // Obtener y enviar respuesta final del asistente si usó get_info_customer
+      const text = await this.getLastConversationAsistant(threadId)
 
-        const text = await this.getLastConversationAsistant(threadId)
+      console.log({ text })
 
-        if (text) {
-          await this.messageService.createWhatsAppMessage({
+      if (text && usedGetInfoCustomer) {
+        await this.messageService.createWhatsAppMessage({
+          to: phoneWa,
+          body: text,
+        });
+
+        await prisma.message.create({
+          data: {
+            role: 'assistant',
+            content: text,
+            chatThreadId,
+            channel: 'WHATSAPP',
+            direction: 'OUTBOUND',
             to: phoneWa,
-            body: text,
-          });
-
-          await prisma.message.create({
-            data: {
-              role: 'assistant',
-              content: text,
-              chatThreadId,
-              channel: 'WHATSAPP',
-              direction: 'OUTBOUND',
-              to: phoneWa,
-            },
-          });
-        }
-
+          },
+        });
       }
-
-
-
-      // 4) Guardar historial (como ya hacías)
-      // const messages = await this.openaiService.getMessageList(threadId);
-
-      // await new SaveHistoryChatUseCase(this.chatThreadRepository).execute({
-      //   messages,
-      //   threadId: chatThreadId,
-      // });
-
-      // 5) PDF/correo si se creó una nueva cotización
-
 
 
     } catch (error) {
@@ -477,31 +586,6 @@ export class UserQuestionCoreUseCase {
       throw new Error('[UserQuestionCore]error')
 
     }
-
-
-
-    // let fileStream: any;
-    // let fileUrl: string | undefined;
-
-    // if (newCustomerQuote.fileKey) {
-    //   fileStream = await this.fileStorageService.getFileStream(
-    //     newCustomerQuote.fileKey,
-    //   );
-    //   fileUrl = await this.fileStorageService.generatePresignedUrl(
-    //     newCustomerQuote.fileKey,
-    //     360000,
-    //   );
-    // }
-
-    // const customerQuote = await this.quoteRepository.findByQuoteNumber({
-    //   quoteNumber: newCustomerQuote.quoteNumber,
-    // });
-
-    // const htmlBody = this.emailService.generarBodyCorreo(customerQuote!);
-
-    // Aquí puedes reactivar todo tu envío de correo / plantillas de WhatsApp
-    // como ya lo tenías.
-
 
   }
 

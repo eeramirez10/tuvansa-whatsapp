@@ -3,25 +3,22 @@ import { EmailService } from '../../infrastructure/services/mail.service';
 import { ChatThreadRepository } from "../../domain/repositories/chat-thread.repository";
 import { QuoteRepository } from "../../domain/repositories/quote.repository";
 import { CustomerRepository } from "../../domain/repositories/customer.repository";
-import { UserCuestionUseCase } from "../../application/use-cases/whatsApp/user-question.use-case";
 import { MessageService } from '../../domain/services/message.service';
 import { LanguageModelService } from "../../domain/services/language-model.service";
-
-import extname from 'ext-name'
-import path from "path";
-import url from "url";
 import { FileStorageService } from '../../domain/services/file-storage.service';
-import { SaveMediaFileUseCase } from "../../application/use-cases/file-storage/save-media-file.use-case";
 import { EnsureChatThreadForPhoneUseCase } from "../../application/use-cases/whatsApp/ensure-chat-thread-for-phone.use-case";
 import { PrismaClient } from "@prisma/client";
 import { UserQuestionQueueProcessor } from "../../application/use-cases/whatsApp/user-question-queue-processor.use-case";
 import { UserQuestionCoreUseCase } from '../../application/use-cases/whatsApp/user-question-core.use-case';
-
 import { SendMessageRequestDTO } from "../../domain/dtos/whatssapp/send-message-request.dto";
-
 import { WhatsAppNotificationService } from "../../infrastructure/services/whatsapp-notification.service";
 import { WhatsappTemplate } from "../../infrastructure/template/whatsapp/whatsapp-templates";
 import { SendWhatssAppTemplateRequest } from "../../domain/dtos/whatssapp/send-whatss-app-template-request";
+import { FileRepository } from '../../domain/repositories/file.repository';
+import { SaveTemporaryFileRequestDTO } from "../../domain/dtos/file/save-temporary-file-request.dto";
+import extname from 'ext-name'
+import path from "path";
+import url from "url";
 
 
 
@@ -52,7 +49,7 @@ export class WhatsAppController {
     private customerRepository: CustomerRepository,
     private messageService: MessageService,
     private fileStorageService: FileStorageService,
-
+    private fileRepository: FileRepository
 
   ) {
 
@@ -62,7 +59,6 @@ export class WhatsAppController {
   async webhookIncomingMessages(req: Request, res: Response) {
 
     const payload = req.body
-
 
 
     const {
@@ -79,8 +75,6 @@ export class WhatsAppController {
 
       if (MessageType === 'text') {
 
-
-
         const { chatThread } = await
           new EnsureChatThreadForPhoneUseCase(
             this.openAIService,
@@ -94,31 +88,6 @@ export class WhatsAppController {
           }
         })
 
-
-        // await new Promise((resolve) => {
-
-        //   setTimeout(() => {
-        //     resolve(null)
-        //   }, 8000)
-        // })
-
-        // const userQuestionCore = new UserQuestionCoreUseCase(
-        //   this.openAIService,
-        //   this.chatThreadRepository,
-        //   this.quoteRepository,
-        //   this.customerRepository,
-        //   this.emailService,
-        //   this.fileStorageService,
-        //   this.messageService
-        // )
-
-        // new UserQuestionQueueProcessor(
-        //   this.openAIService,
-        //   this.chatThreadRepository,
-        //   userQuestionCore
-        // ).execute(WaId)
-        //   .catch((err) => console.error('[QueueProcessor error]', err));
-
         this.scheduleProcessing(WaId)
 
         return res.status(202).send('Accepted')
@@ -127,15 +96,6 @@ export class WhatsAppController {
 
       if (MessageType === 'document') {
 
-
-        // await this.messageService.createWhatsAppMessage({
-        //   body: 'Por el momento aun no puedo recibir archivos, pero puedes copiar y pegarlos en el chat para procesarlos.',
-        //   to: WaId
-        // })
-
-        // return res.status(202).send('Accepted')
-
-
         if (!ACCEPTED_FORMATS.includes(MediaContentType0)) {
 
           await this.messageService.createWhatsAppMessage({
@@ -143,13 +103,9 @@ export class WhatsAppController {
             to: WaId
           })
 
-
           return res.status(415).send('Unsupported Media Type')
 
-
         }
-
-
 
         const mediaUrl = MediaUrl0
         const contentType = MediaContentType0
@@ -157,57 +113,41 @@ export class WhatsAppController {
         const mediaSid = path.basename(url.parse(mediaUrl).pathname);
         const filename = `${mediaSid}.${extension}`;
 
+        const fileStream = await this.messageService.getFileFromUrl(mediaUrl)
+        const chunks: Uint8Array[] = []
+
+        for await (const chunk of fileStream) {
+          chunks.push(chunk)
+        }
+
+        const fileBuffer = Buffer.concat(chunks)
+
+        const { chatThread } = await
+          new EnsureChatThreadForPhoneUseCase(
+            this.openAIService,
+            this.chatThreadRepository)
+            .execute(WaId)
+
+        const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength);
+        const saveTemporaryFile = new SaveTemporaryFileRequestDTO({ filename, fileBuffer: arrayBuffer, mimeType: contentType, chatThreadId: chatThread.id })
+
+        await this.fileRepository.saveTemporaryFile(saveTemporaryFile)
+
+        await prisma.pendingMessage.create({
+          data: {
+            chatThreadId: chatThread.id,
+            body: null,
+            fileKey: filename
+          }
+        })
 
 
-        const file = await this.messageService.getFileFromUrl(mediaUrl)
-        // await this.messageService.deleteFileFromApi({ MessageSid, mediaSid }) /// revisar
-
-        await new SaveMediaFileUseCase(this.fileStorageService)
-          .execute(file, filename)
-
-        const messaggeUploadFile = `archivo_adjuntado\nfile_key:${filename})`
-
-        await new UserCuestionUseCase(
-          this.openAIService,
-          this.chatThreadRepository,
-          this.quoteRepository,
-          this.customerRepository,
-          this.emailService,
-          this.fileStorageService,
-          this.messageService
-        ).execute({ phoneWa: WaId, question: messaggeUploadFile })
-
-        // const asistantResponse = userQuestion!.filter(q => q.role === 'assistant')[0]
-        // await this.messageService.createWhatsAppMessage({
-        //   body: asistantResponse.content,
-        //   to: WaId
-        // })
-
-
-
-
+        this.scheduleProcessing(WaId)
 
         return res.status(202).send('Accepted')
 
       }
 
-
-
-      await this.messageService.createWhatsAppMessage({
-        body: 'Por el momento aun no puedo recibir archivos, pero puedes copiar y pegarlos en el chat para procesarlos.',
-        to: WaId
-      })
-
-      return res.status(202).send('Accepted')
-
-
-      await this.messageService.createWhatsAppMessage({
-        body: 'Por seguridad no puedo aceptar ese tipo de archivo, solo puedo aceptar pdf o excel',
-        to: WaId
-      })
-
-
-      res.status(202).send('Accepted')
 
 
     } catch (error) {
@@ -293,17 +233,6 @@ export class WhatsAppController {
 
 
 
-  // private deleteMediaItem(mediaItem) {
-  //   const client = getTwilioClient();
-
-  //   return client
-  //     .api.accounts(twilioAccountSid)
-  //     .messages(mediaItem.MessageSid)
-  //     .media(mediaItem.mediaSid).remove();
-  // }
-
-
-
   private scheduleProcessing = (phoneWa: string) => {
     const existingTimer = debounceTimers.get(phoneWa)
 
@@ -321,7 +250,8 @@ export class WhatsAppController {
         this.quoteRepository,
         this.customerRepository,
         this.messageService,
-
+        this.fileRepository,
+        this.fileStorageService
       )
 
       new UserQuestionQueueProcessor(

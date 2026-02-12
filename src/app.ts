@@ -8,6 +8,8 @@ import { AppRoutes } from './presentation/app-routes';
 
 async function main() {
 
+  
+
   new Server({
     port: envs.PORT,
     routes: AppRoutes.routes()

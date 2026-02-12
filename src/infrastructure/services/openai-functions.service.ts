@@ -31,7 +31,7 @@ export class OpenAiFunctinsService {
           Haz un resumen conciso de la siguiente conversación solo pon lo que
            pidio el cliente para cotizar en resumen y sin su nombre  , 
            omite que contacto a Tueria y valvulas del norte y sus datos personales como telefono , 
-           ubicacion, 
+           ubicacion, tambien pon la sucursal que eligio
            pon el texto sin caracteres especiales ni asteriscos pon todo de corrido, POR NINGUN MOTIVO pongas saltos de linea  :\n\n${conversation}
           `
         }

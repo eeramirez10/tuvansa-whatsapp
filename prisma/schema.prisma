@@ -13,6 +13,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserIntent {
+  QUOTE
+  SUPPLIER
+  COMPLAINT
+}
+
+enum SupplierStatus {
+  PENDING
+  CONTACTED
+  ACTIVE
+  REJECTED
+  INACTIVE
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ESCALATED
+}
+
 enum QuoteStatus {
   PENDING
   QUOTED
@@ -23,6 +44,9 @@ enum QuoteStatus {
 enum UserRole {
   ADMIN
   USER
+  BRANCH_MANAGER
+  SUPPORT
+  VIEWER
   // Agrega más roles si los necesitas, por ejemplo:
   // SUPERADMIN
   // MANAGER
@@ -71,8 +95,12 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  managerId String? @db.Uuid
+  manager   User?   @relation("BranchManager", fields: [managerId], references: [id])
+
   // Relación inversa: una sucursal puede tener muchos usuarios
-  users User[]
+  users  User[]  @relation("BranchUsers")
+  quotes Quote[]
 }
 
 model User {
@@ -90,9 +118,12 @@ model User {
 
   branchId String? @db.Uuid
 
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch Branch? @relation("BranchUsers", fields: [branchId], references: [id], onDelete: Cascade)
 
   QuoteVersion QuoteVersion[]
+  branches     Branch[]       @relation("BranchManager")
+  complaints_assigned    Complaint[] @relation("AssignedComplaints")
+  complaints_responded   Complaint[] @relation("RespondedComplaints")
 }
 
 model Customer {
@@ -110,6 +141,7 @@ model Customer {
   chatThreads ChatThread[]
 
   QuoteVersion QuoteVersion[]
+  complaints   Complaint[]
 }
 
 model Quote {
@@ -132,6 +164,9 @@ model Quote {
   QuoteVersion QuoteVersion[]
   Message      Message[]
 
+  branchId String? @db.Uuid
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
   @@index([chatThreadId])
 }
 
@@ -153,6 +188,20 @@ model QuoteItem {
   QuoteVersionItem QuoteVersionItem[]
 }
 
+model TemporaryFile {
+  id           String     @id @default(uuid()) @db.Uuid
+  fileKey      String     @unique
+  buffer       Bytes
+  mimeType     String
+  chatThreadId String     @db.Uuid
+  chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([chatThreadId])
+  @@index([createdAt])
+}
+
 model ChatThread {
   id                String    @id @default(uuid()) @db.Uuid
   openAiThreadId    String    @unique
@@ -168,25 +217,31 @@ model ChatThread {
   customerId String?   @db.Uuid
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  userIntent      UserIntent?
+  supplier_count  Int         @default(0)
+  complaint_count Int         @default(0)
+
   // Relación con mensajes
-  messages Message[]
-  Quote Quote[]
+  messages       Message[]
+  Quote          Quote[]
   PendingMessage PendingMessage[]
+  temporaryFiles TemporaryFile[]
+  complaints     Complaint[]
+  suppliers      Supplier[]       @relation("ChatSuppliers")
 }
 
-
 model PendingMessage {
-  id String @id @default(uuid()) @db.Uuid
-  chatThreadId String @db.Uuid 
-  chatThread ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid()) @db.Uuid
+  chatThreadId String     @db.Uuid
+  chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
 
-  body String
-  status PendingMessageStatus @default(PENDING)
+  body      String?
+  status    PendingMessageStatus @default(PENDING)
+  fileKey   String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([chatThreadId,status, createdAt])
+  @@index([chatThreadId, status, createdAt])
 }
 
 model QuoteVersion {
@@ -354,4 +409,61 @@ model Message {
 model Counter {
   name  String @id
   value Int
+}
+
+model Supplier {
+  id             String            @id @default(cuid())
+  chatThreadId   String            @db.Uuid
+  chatThread     ChatThread        @relation("ChatSuppliers", fields: [chatThreadId], references: [id], onDelete: Cascade)
+  company_name   String
+  contact_person String
+  email          String
+  phone          String
+  status         SupplierStatus    @default(PENDING)
+  catalogs       SupplierCatalog[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([chatThreadId])
+}
+
+model SupplierCatalog {
+  id           String   @id @default(cuid())
+  supplierId   String   @db.Uuid
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  catalog_name String
+  description  String
+  file_key     String?
+  createdAt    DateTime @default(now())
+
+  @@index([supplierId])
+}
+
+model Complaint {
+  id             String          @id @default(cuid())
+  chatThreadId   String          @db.Uuid
+  chatThread     ChatThread      @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+  customerId     String?         @db.Uuid
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  reporter_name  String?
+  reporter_email String?
+  reporter_phone String?
+  complaint_type String // 'branch_no_answer' | 'already_quoted' | 'general'
+  description    String
+  branch_name    String?
+  status         ComplaintStatus @default(OPEN)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  assigned_to_userId String? @db.Uuid // Quién es el encargado asignado
+  assigned_to_user   User?   @relation("AssignedComplaints", fields: [assigned_to_userId], references: [id])
+
+  responded_by_userId String? @db.Uuid // Quién respondió
+  responded_by_user   User?   @relation("RespondedComplaints", fields: [responded_by_userId], references: [id])
+
+  action_taken     String? // "ATTENDED" | "REJECTED"
+  action_timestamp DateTime? // Cuándo respondió
+
+  @@index([chatThreadId])
+  @@index([customerId])
 }

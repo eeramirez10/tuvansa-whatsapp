@@ -89,7 +89,8 @@ export class ProductStreamParser {
     if (!prod) return null;
     return `${idx}️⃣ EAN: ${prod.ean}
 Descripción: ${prod.descripcion}
-Unidad: ${prod.unidad}`;
+Unidad: ${prod.unidad}
+`;
   }
 
   markSent(idx: number) {

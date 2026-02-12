@@ -13,7 +13,8 @@ interface QuoteOptions {
   customer?: CustomerEntity;
   fileKey?: string
   summary?: string
-  readonly chatThread?: ChatThreadEntity
+  chatThread?: ChatThreadEntity
+  branchId?: string
 }
 
 
@@ -27,7 +28,8 @@ export class QuoteEntity {
   readonly customer?: CustomerEntity;
   readonly fileKey?: string
   readonly chatThread?: ChatThreadEntity
-  summary?: string
+  readonly summary?: string
+  readonly branchId?: string
 
   constructor(options: QuoteOptions) {
     this.id = options.id;
@@ -38,5 +40,6 @@ export class QuoteEntity {
     this.customer = options.customer;
     this.chatThread = options.chatThread
     this.summary = options.summary
+    this.branchId = options.branchId
   }
 }

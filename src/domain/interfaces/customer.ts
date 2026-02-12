@@ -16,7 +16,8 @@ export interface ExtractedData {
   location: string
   items: Item[]
   file_key?: string
-  company:string
+  company: string
+  branch_id?: string
 }
 
 
