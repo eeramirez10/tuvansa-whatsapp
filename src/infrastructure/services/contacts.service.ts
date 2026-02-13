@@ -41,11 +41,11 @@ export class ContactService {
         name: 'Roy Grinberg',
         email: "rgrinberg@tuvansa.com.mx"
       },
-      {
-        phone: '525522406714',
-        name: 'Marcos Avalos',
-        email: "mavalos@tuvansa.com.mx"
-      },
+      // {
+      //   phone: '525522406714',
+      //   name: 'Marcos Avalos',
+      //   email: "mavalos@tuvansa.com.mx"
+      // },
       {
         phone: "528116603993",
         name: "Alejandro Lozano",

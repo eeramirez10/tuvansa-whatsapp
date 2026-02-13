@@ -4,12 +4,13 @@ import { get } from 'env-var'
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
 dotenv.config({ path: envFile })
 
-
-const apiUrl = process.env.NODE_ENV === 'production'
+const isProduction = process.env.NODE_ENV === 'production'
+const apiUrl = isProduction
   ? get('API_PROD_URL').required().asString()
   : get('API_DEV_URL').required().asString()
 
 export const envs = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: get('PORT').required().asPortNumber(),
   TWILIO_ACCOUNT_SID: get('TWILIO_ACCOUNT_SID').required().asString(),
   TWILIO_AUTH_TOKEN: get('TWILIO_AUTH_TOKEN').required().asString(),
@@ -23,6 +24,7 @@ export const envs = {
   AWS_SECRET_ACCESS_KEY: get('AWS_SECRET_ACCESS_KEY').required().asString(),
   AWS_BUCKET_NAME: get('AWS_BUCKET_NAME').required().asString(),
   AWS_REGION: get('AWS_REGION').required().asString(),
-  TWILIO_NUMBER:get('TWILIO_NUMBER').required().asString(),
+  TWILIO_NUMBER: get('TWILIO_NUMBER').required().asString(),
+  DEV_PHONE_NUMBER: !isProduction ? get('DEV_PHONE_NUMBER').asString() : undefined,
   API_URL: apiUrl
 } 

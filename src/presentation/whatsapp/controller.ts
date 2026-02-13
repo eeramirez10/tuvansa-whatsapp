@@ -16,6 +16,7 @@ import { WhatsappTemplate } from "../../infrastructure/template/whatsapp/whatsap
 import { SendWhatssAppTemplateRequest } from "../../domain/dtos/whatssapp/send-whatss-app-template-request";
 import { FileRepository } from '../../domain/repositories/file.repository';
 import { SaveTemporaryFileRequestDTO } from "../../domain/dtos/file/save-temporary-file-request.dto";
+import { envs } from '../../config/envs';
 import extname from 'ext-name'
 import path from "path";
 import url from "url";
@@ -59,7 +60,6 @@ export class WhatsAppController {
   async webhookIncomingMessages(req: Request, res: Response) {
 
     const payload = req.body
-
 
     const {
       MediaContentType0,
