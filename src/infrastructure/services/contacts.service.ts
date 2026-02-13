@@ -21,6 +21,12 @@ export class ContactService {
 
     [
 
+      
+      {
+        phone: '526862486912',
+        name: 'Carlos Perez',
+        email: "cperez@tuvansa.com.mx"
+      },
       {
         phone: '5215579044897',
         name: 'German Barranco',
