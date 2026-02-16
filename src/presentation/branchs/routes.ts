@@ -19,6 +19,7 @@ export class BranchRoutes {
     app.post('/', controller.createBranch)
     app.get('/:id', controller.getBranch)
     app.get('/', controller.getBranchs)
+    app.put('/:id/assign-manager/:managerId', controller.assingManager)
 
     return app
   }

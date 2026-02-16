@@ -11,6 +11,17 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
 
 
+  async findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity> {
+    return await prismaClient.customer.findUnique({
+      where: {
+        phoneWa
+      }
+    });
+
+  }
+
+
+
   async getCustomers(): Promise<CustomerEntity[]> {
     return await prismaClient.customer.findMany({
       orderBy: {
@@ -44,7 +55,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
     })
   }
   getById(customerId: string): Promise<CustomerEntity | null> {
- 
+
     return prismaClient.customer.findFirst({
       where: {
         id: customerId
@@ -102,7 +113,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
       console.log(error)
 
       throw Error('Hubo un error en Customer revisar logs')
-    } 
+    }
 
   }
 

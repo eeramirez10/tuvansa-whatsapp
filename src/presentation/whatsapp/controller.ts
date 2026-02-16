@@ -16,10 +16,14 @@ import { WhatsappTemplate } from "../../infrastructure/template/whatsapp/whatsap
 import { SendWhatssAppTemplateRequest } from "../../domain/dtos/whatssapp/send-whatss-app-template-request";
 import { FileRepository } from '../../domain/repositories/file.repository';
 import { SaveTemporaryFileRequestDTO } from "../../domain/dtos/file/save-temporary-file-request.dto";
-import { envs } from '../../config/envs';
 import extname from 'ext-name'
 import path from "path";
 import url from "url";
+import { BranchRepository } from '../../domain/repositories/branch.repository';
+import { ToolCallHandlerFactory } from '../../application/use-cases/whatsApp/tool-handlers/tool-call-handler.factory';
+import { OpenAiFunctinsService } from '../../infrastructure/services/openai-functions.service';
+import { ContactService } from '../../infrastructure/services/contacts.service';
+import { MessageRepository } from '../../domain/repositories/message-repository';
 
 
 
@@ -50,7 +54,9 @@ export class WhatsAppController {
     private customerRepository: CustomerRepository,
     private messageService: MessageService,
     private fileStorageService: FileStorageService,
-    private fileRepository: FileRepository
+    private fileRepository: FileRepository,
+    private branchRepository: BranchRepository,
+    private messageRepository: MessageRepository
 
   ) {
 
@@ -244,14 +250,33 @@ export class WhatsAppController {
 
     const timer = setTimeout(() => {
 
+      // Create factory with all dependencies
+      const openAiFunctions = new OpenAiFunctinsService();
+      const contactService = new ContactService(
+        new EmailService(),
+        new WhatsAppNotificationService(this.messageService)
+      );
+
+      const toolCallHandlerFactory = new ToolCallHandlerFactory(
+        this.customerRepository,
+        this.quoteRepository,
+        this.fileRepository,
+        this.chatThreadRepository,
+        this.branchRepository,
+        this.messageRepository,
+        this.messageService,
+        contactService,
+        this.fileStorageService,
+        openAiFunctions,
+
+      );
+
+
       const userQuestionCore = new UserQuestionCoreUseCase(
         this.openAIService,
-        this.chatThreadRepository,
-        this.quoteRepository,
-        this.customerRepository,
         this.messageService,
-        this.fileRepository,
-        this.fileStorageService
+        toolCallHandlerFactory,
+        this.messageRepository
       )
 
       new UserQuestionQueueProcessor(

@@ -19,4 +19,6 @@ export abstract class CustomerDatasource {
   abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
 
   abstract getCustomers() : Promise<CustomerEntity[]>
+
+  abstract findByWhatsappPhone(phoneWa:string):Promise<CustomerEntity>
 }
