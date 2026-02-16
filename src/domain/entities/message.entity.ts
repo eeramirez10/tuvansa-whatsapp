@@ -81,9 +81,9 @@ export class MessageEntity {
     this.createdAt = options.createdAt;
     this.chatThreadId = options.chatThreadId;
 
-    // nuevos (opcionales)
+
     this.channel = options.channel ?? 'WHATSAPP';
-    this.direction = options.direction; // si no viene, quedará undefined (compatible)
+    this.direction = options.direction; 
     this.from = options.from ?? null;
     this.to = options.to ?? null;
 
@@ -104,36 +104,4 @@ export class MessageEntity {
     this.idempotencyKey = options.idempotencyKey ?? null;
   }
 
-
-
-  static fromPrisma(row: any): MessageEntity {
-    return new MessageEntity({
-      id: row.id,
-      role: row.role,
-      content: row.content,
-      createdAt: row.createdAt,
-      chatThreadId: row.chatThreadId,
-
-      channel: row.channel ?? 'WHATSAPP',
-      direction: row.direction ?? undefined,
-      from: row.from ?? null,
-      to: row.to ?? null,
-
-      provider: row.provider ?? null,
-      providerMessageId: row.providerMessageId ?? null,
-      status: row.status ?? null,
-      errorCode: row.errorCode ?? null,
-
-      quoteId: row.quoteId ?? null,
-      quoteVersionId: row.quoteVersionId ?? null,
-      quoteArtifactId: row.quoteArtifactId ?? null,
-
-      templateCode: row.templateCode ?? null,
-      contentSid: row.contentSid ?? null,
-      variables: row.variables ?? null,
-      media: row.media ?? null,
-
-      idempotencyKey: row.idempotencyKey ?? null,
-    });
-  }
 }

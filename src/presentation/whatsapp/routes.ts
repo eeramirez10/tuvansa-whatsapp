@@ -13,6 +13,10 @@ import { S3FileStorageService } from '../../infrastructure/services/s3-file-stor
 import { FilePostgresqlDataSource } from "../../infrastructure/datasource/file-postgresql.datasource";
 import { FileRepositoryImpl } from '../../infrastructure/repositories/file.repository-impl';
 import { FileRepository } from '../../domain/repositories/file.repository';
+import { BranchRepositoryImpl } from '../../infrastructure/repositories/branch.respository-impl';
+import { BranchPostgresqlDatasource } from "../../infrastructure/datasource/branch-postgresql.datasource";
+import { MessageRepositoryImpl } from "../../infrastructure/repositories/message.repository-impl";
+import { MessagePostgresqlDatasource } from "../../infrastructure/datasource/message-postgresql.datasource";
 
 
 
@@ -24,18 +28,15 @@ export class WhatsAppRoutes {
   static routes = (): Router => {
 
     const router = Router()
-    const chatThreadDataSource = new ChatThreadPostgresqlDatasource()
-    const quoteDataSource = new QuotePostgresqlDatasource()
-    const customerDatasource = new CustomerPostgresqlDatasource()
-    const chatThreadRepositoryImpl = new ChatThreadRepositoryImpl(chatThreadDataSource)
-    const quoteRepositoryImpl = new QuoteRepositoryImpl(quoteDataSource)
-    const customerRepositoryImpl = new CustomerRepositoryImpl(customerDatasource)
+
+    const chatThreadRepositoryImpl = new ChatThreadRepositoryImpl(new ChatThreadPostgresqlDatasource())
+    const quoteRepositoryImpl = new QuoteRepositoryImpl(new QuotePostgresqlDatasource())
+    const customerRepositoryImpl = new CustomerRepositoryImpl(new CustomerPostgresqlDatasource())
     const openAiService = new OpenAIService(new TwilioService())
     const s3FileStorageService = new S3FileStorageService()
-
-
-    const fileDataSource = new FilePostgresqlDataSource()
-    const fileRepositoryImpl = new FileRepositoryImpl(fileDataSource);
+    const fileRepositoryImpl = new FileRepositoryImpl(new FilePostgresqlDataSource());
+    const branchRepository = new BranchRepositoryImpl(new BranchPostgresqlDatasource())
+    const messageRepository = new MessageRepositoryImpl(new MessagePostgresqlDatasource())
 
     const whastAppController = new WhatsAppController(
       openAiService,
@@ -45,7 +46,9 @@ export class WhatsAppRoutes {
       customerRepositoryImpl,
       new TwilioService(),
       s3FileStorageService,
-      fileRepositoryImpl
+      fileRepositoryImpl,
+      branchRepository,
+      messageRepository
     )
 
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))

@@ -4,16 +4,14 @@ import { BuildIdempotencyKeyOptions, MessageDatasource, OutboundMessageCreate } 
 import { MessageEntity } from "../../domain/entities/message.entity";
 
 import crypto from 'crypto'
+import { CreateAssistantMessageRequest } from "../../domain/dtos/messages/create-assistant-message-request.dto";
+import { CreateUserMessageRequestDTO } from "../../domain/dtos/messages/create-user-message-request.dto";
 
 
 
 const prismaClient = new PrismaClient()
 
 export class MessagePostgresqlDatasource implements MessageDatasource {
-
-
-
-
 
 
   buildIdempotencyKey(input: BuildIdempotencyKeyOptions): string {
@@ -30,6 +28,8 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
       }
     })
   }
+
+
   createQueued(data: OutboundMessageCreate): Promise<MessageEntity> {
     return prismaClient.message.create({
       data: {
@@ -56,6 +56,42 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
   updateStatusByProviderSid(providerMessageSid: string, status: string, extra?: any): Promise<MessageEntity> {
     throw new Error("Method not implemented.");
   }
+
+
+  async createUserMessage(request: CreateUserMessageRequestDTO): Promise<void> {
+
+    const { content, chatThreadId, from } = request
+
+    await prismaClient.message.create({
+      data: {
+        role: "user",
+        content,
+        chatThreadId,
+        channel: 'WHATSAPP',
+        direction: 'INBOUND',
+        from,
+
+      }
+    })
+  }
+
+
+  async createAssistantMessage(request: CreateAssistantMessageRequest): Promise<void> {
+
+    const { content, chatThreadId, to } = request
+
+    await prismaClient.message.create({
+      data: {
+        role: "assistant",
+        content,
+        chatThreadId,
+        channel: 'WHATSAPP',
+        direction: 'OUTBOUND',
+        to
+      }
+    })
+  }
+
 
 
 

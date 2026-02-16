@@ -21,12 +21,7 @@ export class ContactService {
 
     [
 
-      
-      {
-        phone: '526862486912',
-        name: 'Carlos Perez',
-        email: "cperez@tuvansa.com.mx"
-      },
+
       {
         phone: '5215579044897',
         name: 'German Barranco',
@@ -57,11 +52,6 @@ export class ContactService {
         name: "Alejandro Lozano",
         email: "alozano@tuvansa.com.mx"
       },
-      {
-        phone: "5215544129884",
-        name: "Christian Gonzalez",
-        email: "cgonzalez@tuvansa.com.mx"
-      }
     ]
 
   constructor(
@@ -72,32 +62,61 @@ export class ContactService {
   }
 
 
+  async sendWhatsAppTemplate(name: string, waPhone: string, sendProps: SendPropsType) {
+    const { summary, url } = sendProps;
+
+    try {
+      await this.whatsAppNotificationService.sendTemplateMessage(
+        WhatsappTemplate.QUOTE_WEB_NOTIFICATION_ICONS,
+        {
+          quote: { summary },
+          url,
+          to: waPhone
+        }
+      );
+
+      console.log(`[ContactService] WhatsApp enviado a ${name} (${waPhone})`);
+
+    } catch (error) {
+      console.error(`[ContactService] Error al enviar WhatsApp a ${name}:`, error);
+      throw new Error(`Error enviando WhatsApp a ${name}`);
+    }
+  }
+
+  async sendEmailHtmTemplate(name: string, email: string, sendProps: SendPropsType) {
+    const { summary, url } = sendProps;
+    const html = this.htmlNewQuoteResponse({ summary, url });
+
+    try {
+      await this.emailService.sendEmail({
+        to: email,
+        subject: "Nueva cotización asistente IA desde WhatsApp Tuvansa",
+        htmlBody: html,
+      });
+
+      console.log(`[ContactService] Email enviado a ${name} (${email})`);
+
+    } catch (error) {
+      console.error(`[ContactService] Error al enviar email a ${name}:`, error);
+      throw new Error(`Error enviando email a ${name}`);
+    }
+  }
+
   async sendEmail(sendProps: SendPropsType) {
 
     const { summary, url } = sendProps
-
-
     const html = this.htmlNewQuoteResponse({ summary, url })
-
     try {
-
       for (let contac of this.contacts) {
-
         await this.emailService.sendEmail({
           to: contac.email,
           subject: "Nueva cotización asistente IA  desde WhatsApp Tuvansa ",
           htmlBody: html,
         })
-
       }
-
     } catch (error) {
-
       throw new Error('Error AL madar email [ContactService]')
-
     }
-
-
   }
 
 
