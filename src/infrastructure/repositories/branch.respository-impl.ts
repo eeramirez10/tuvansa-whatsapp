@@ -4,6 +4,7 @@ import { BranchRepository } from "../../domain/repositories/branch.repository";
 import { BranchDatasource } from '../../domain/datasource/branch.datasource';
 import { AssingnManagerResponse } from "../../domain/dtos/branch/assign-manager-response";
 import { GetAssignedManagerResponse } from "../../domain/dtos/branch/get-assigned-manager-response";
+import { GetBranchesResponse } from '../../domain/dtos/branch/get-branches-response';
 
 export class BranchRepositoryImpl implements BranchRepository {
 
@@ -26,7 +27,7 @@ export class BranchRepositoryImpl implements BranchRepository {
   }
 
 
-  getBranchs(): Promise<BranchEntity[]> {
+  getBranchs(): Promise<GetBranchesResponse[]> {
     return this.branchDatasource.getBranchs()
   }
 

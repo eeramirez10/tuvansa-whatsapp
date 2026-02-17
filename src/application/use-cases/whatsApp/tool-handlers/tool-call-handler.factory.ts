@@ -55,7 +55,8 @@ export class ToolCallHandlerFactory {
 
 
     const updateCustomerHandler = new UpdateCustomerHandler(
-      this.messageService
+      this.messageService,
+      this.customerRepository
     );
 
 

@@ -6,8 +6,9 @@ import { LoginUserDto } from "../../domain/dtos/auth/login-user.dto";
 
 import { CustomError } from "../../domain/errors/custom-error";
 import { CheckFieldDto } from "../../domain/dtos/auth/check-field.dto";
-import { UserEntity } from "../../domain/entities/user.entity";
+
 import { PaginationResult } from "../../domain/entities/pagination-result";
+import { UserEntity } from "../../domain/entities/user.entity";
 
 
 interface Option {

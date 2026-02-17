@@ -3,7 +3,7 @@ import { QuotePostgresqlDatasource } from "../../infrastructure/datasource/quote
 import { QuoteRepositoryImpl } from "../../infrastructure/repositories/quote.repository-impl";
 
 import { OpenAiFunctinsService } from "../../infrastructure/services/openai-functions.service";
-import { QuoteVersionPostgresqlDatasource } from "../../infrastructure/datasource/quote-version-postgresql.datasource.dto";
+
 import { QuoteVersionRepositoryImpl } from '../../infrastructure/repositories/quote-version.repository-impl';
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { QuoteVersionsController } from "./controller";
@@ -16,6 +16,7 @@ import { S3FileStorageService } from "../../infrastructure/services/s3-file-stor
 import { MessageService } from "../../domain/services/message.service";
 import { TwilioService } from "../../infrastructure/services/twilio.service";
 import { WhatsAppNotificationService } from '../../infrastructure/services/whatsapp-notification.service';
+import { QuoteVersionPostgresqlDatasource } from "../../infrastructure/datasource/quote-version-postgresql.datasource.dto";
 
 
 

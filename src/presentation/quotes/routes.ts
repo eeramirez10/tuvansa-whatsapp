@@ -3,11 +3,12 @@ import { QuotePostgresqlDatasource } from "../../infrastructure/datasource/quote
 import { QuoteRepositoryImpl } from "../../infrastructure/repositories/quote.repository-impl";
 import { QuotesController } from "./controller";
 import { OpenAiFunctinsService } from "../../infrastructure/services/openai-functions.service";
-import { QuoteVersionPostgresqlDatasource } from "../../infrastructure/datasource/quote-version-postgresql.datasource.dto";
+
 import { QuoteVersionRepositoryImpl } from '../../infrastructure/repositories/quote-version.repository-impl';
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { PrismaClient } from "@prisma/client";
 import { S3FileStorageService } from "../../infrastructure/services/s3-file-storage.service";
+import { QuoteVersionPostgresqlDatasource } from "../../infrastructure/datasource/quote-version-postgresql.datasource.dto";
 
 
 

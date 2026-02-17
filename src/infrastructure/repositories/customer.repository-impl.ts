@@ -6,24 +6,31 @@ import { UpdateCustomerDto } from "../../domain/dtos/update-customer.dto";
 
 
 
+export class CustomerRepositoryImpl extends CustomerRepository {
 
 
 
-export  class CustomerRepositoryImpl extends CustomerRepository {
-
-
-
-
-
-  constructor(private readonly customerDatasource:CustomerDatasource){
+  constructor(private readonly customerDatasource: CustomerDatasource) {
     super();
   }
+
+
+  updateCustomerByWhatsappNumber(whatsappNumber: string, updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity> {
+    return this.customerDatasource.updateCustomerByWhatsappNumber(whatsappNumber, updateCustometDto);
+  }
+
+
+
+  findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity> {
+    return this.customerDatasource.findByWhatsappPhone(phoneWa)
+  }
+
 
   getCustomers(): Promise<CustomerEntity[]> {
     return this.customerDatasource.getCustomers()
   }
 
-  getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity| null> {
+  getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null> {
     return this.customerDatasource.getCustomerByQuoteNumber(quoteNumber)
   }
 

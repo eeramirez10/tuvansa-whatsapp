@@ -60,10 +60,17 @@ export class UserQuestionQueueProcessor {
           }
         })
 
+        let firstFileIncluded = false;
+
         const combinedQuestion = pendings
           .map((p) => {
             if (p.fileKey) {
-              
+              if (firstFileIncluded) {
+                console.warn('[UserQuestionQueueProcessor] Ignoring extra file for current batch:', p.fileKey);
+                return '';
+              }
+
+              firstFileIncluded = true;
               return `He adjuntado un archivo: ${p.fileKey}`;
             }
             return p.body?.trim() || '';

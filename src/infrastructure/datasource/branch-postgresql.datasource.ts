@@ -5,6 +5,7 @@ import { BranchEntity } from "../../domain/entities/branch.entity";
 import { AssingnManagerResponse } from "../../domain/dtos/branch/assign-manager-response";
 import { GetAssignedManagerResponse } from "../../domain/dtos/branch/get-assigned-manager-response";
 import { BranchAssignManagerError, BranchNotFoundError, ManagerNotAssignedError } from "../../domain/errors/branch.error";
+import { GetBranchesResponse } from "../../domain/dtos/branch/get-branches-response";
 
 
 
@@ -100,7 +101,7 @@ export class BranchPostgresqlDatasource implements BranchDatasource {
     const { ...rest } = createBranchDto
     return await prismaClient.branch.create({ data: rest })
   }
-  async getBranchs(): Promise<BranchEntity[]> {
+  async getBranchs(): Promise<GetBranchesResponse[]> {
     return await prismaClient.branch.findMany({
       select: {
         id: true,

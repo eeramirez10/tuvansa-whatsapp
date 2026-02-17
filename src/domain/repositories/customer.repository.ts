@@ -15,6 +15,8 @@ export abstract class CustomerRepository {
   abstract getById(customerId: string): Promise<CustomerEntity | null>
   abstract updateCustomer(updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity>
 
+  abstract updateCustomerByWhatsappNumber(whatsappNumber: string, updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity>
+
   abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
 
   abstract getCustomers(): Promise<CustomerEntity[]>

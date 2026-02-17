@@ -3,8 +3,9 @@ import { CheckFieldDto } from "../../domain/dtos/auth/check-field.dto";
 import { CreateUserDto } from "../../domain/dtos/auth/create-user.dto";
 import { LoginUserDto } from "../../domain/dtos/auth/login-user.dto";
 import { AuthRepository } from "../../domain/repositories/auth.repository";
-import { UserEntity } from '../../domain/entities/user.entity';
+
 import { PaginationResult } from "../../domain/entities/pagination-result";
+import { UserEntity } from "../../domain/entities/user.entity";
 
 export class AuthRepositoryImpl implements AuthRepository {
 

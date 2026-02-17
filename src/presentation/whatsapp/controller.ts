@@ -113,6 +113,51 @@ export class WhatsAppController {
 
         }
 
+        const { chatThread } = await
+          new EnsureChatThreadForPhoneUseCase(
+            this.openAIService,
+            this.chatThreadRepository)
+            .execute(WaId)
+
+        const hasPendingFile = await prisma.pendingMessage.findFirst({
+          where: {
+            chatThreadId: chatThread.id,
+            fileKey: {
+              not: null
+            },
+            status: {
+              in: ['PENDING', 'PROCESSING']
+            }
+          },
+          select: {
+            id: true
+          }
+        })
+
+        const hasTemporaryFile = await prisma.temporaryFile.findFirst({
+          where: {
+            chatThreadId: chatThread.id
+          },
+          select: {
+            id: true
+          }
+        })
+
+        if (hasPendingFile || hasTemporaryFile) {
+          await this.messageService.createWhatsAppMessage({
+            body: 'Por el momento solo puedo procesar un archivo por solicitud. Ya recibí uno; cuando termine puedes enviarme otro.',
+            to: WaId
+          })
+
+          await this.messageRepository.createAssistantMessage({
+            content: 'Por el momento solo puedo procesar un archivo por solicitud. Ya recibí uno; cuando termine puedes enviarme otro.',
+            chatThreadId:chatThread.id,
+            to: WaId
+          })
+
+          return res.status(202).send('Accepted')
+        }
+
         const mediaUrl = MediaUrl0
         const contentType = MediaContentType0
         const extension = extname.mime(contentType)[0].ext
@@ -127,12 +172,6 @@ export class WhatsAppController {
         }
 
         const fileBuffer = Buffer.concat(chunks)
-
-        const { chatThread } = await
-          new EnsureChatThreadForPhoneUseCase(
-            this.openAIService,
-            this.chatThreadRepository)
-            .execute(WaId)
 
         const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength);
         const saveTemporaryFile = new SaveTemporaryFileRequestDTO({ filename, fileBuffer: arrayBuffer, mimeType: contentType, chatThreadId: chatThread.id })
@@ -295,4 +334,3 @@ export class WhatsAppController {
 
 
 }
-

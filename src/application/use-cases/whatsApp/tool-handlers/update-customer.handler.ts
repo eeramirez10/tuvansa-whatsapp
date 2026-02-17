@@ -1,12 +1,14 @@
 import { ToolCallHandler, ToolCallOutput, ToolCallContext } from './tool-call-handler.interface';
 import { UpdatedCustomerData } from '../../../../domain/interfaces/customer';
 import { MessageService } from '../../../../domain/services/message.service';
-import { PrismaClient } from '@prisma/client';
+import { CustomerRepository } from '../../../../domain/repositories/customer.repository';
 
-const prisma = new PrismaClient();
 
 export class UpdateCustomerHandler implements ToolCallHandler {
-  constructor(private messageService: MessageService) {}
+  constructor(
+    private messageService: MessageService,
+    private customerRepository: CustomerRepository
+  ) { }
 
   canHandle(functionName: string): boolean {
     return functionName === 'update_customer_info';
@@ -24,9 +26,8 @@ export class UpdateCustomerHandler implements ToolCallHandler {
       const clientInfo = JSON.parse(action.function.arguments) as UpdatedCustomerData;
       const { customer_name, customer_lastname, email, phone, location, company } = clientInfo;
 
-      const customer = await prisma.customer.findUnique({
-        where: { phoneWa },
-      });
+
+      const customer = await this.customerRepository.findByWhatsappPhone(phoneWa)
 
       if (!customer) {
         await this.messageService.createWhatsAppMessage({
@@ -43,17 +44,16 @@ export class UpdateCustomerHandler implements ToolCallHandler {
         };
       }
 
-      await prisma.customer.update({
-        where: { phoneWa },
-        data: {
-          name: customer_name ?? customer.name,
-          lastname: customer_lastname ?? customer.lastname,
-          email: email ?? customer.email,
-          phone: phone ?? customer.phone,
-          location: location ?? customer.location,
-          company: company ?? customer.company,
-        },
-      });
+      await this.customerRepository.updateCustomerByWhatsappNumber(phoneWa, {
+        name: customer_name ?? customer.name,
+        lastname: customer_lastname ?? customer.lastname,
+        email: email ?? customer.email,
+        phone: phone ?? customer.phone,
+        location: location ?? customer.location,
+        company: company ?? customer.company,
+      })
+
+
 
       await this.messageService.createWhatsAppMessage({
         to: phoneWa,

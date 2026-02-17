@@ -11,6 +11,21 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
 
 
+  async updateCustomerByWhatsappNumber(whatsappNumber: string, updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity> {
+
+
+    return prismaClient.customer.update({
+      where: {
+        phoneWa: whatsappNumber
+      },
+      data: {
+        ...updateCustometDto
+      }
+    })
+  }
+
+
+
   async findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity> {
     return await prismaClient.customer.findUnique({
       where: {
@@ -74,7 +89,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
   async updateCustomer(updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity> {
 
-    const { id, ...rest } = updateCustometDto
+    const { ...rest } = updateCustometDto
 
     return await prismaClient.customer.update({
       where: {

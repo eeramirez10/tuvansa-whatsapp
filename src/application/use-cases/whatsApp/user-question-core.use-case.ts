@@ -1,4 +1,3 @@
-import { PrismaClient } from "@prisma/client";
 import { LanguageModelService } from "../../../domain/services/language-model.service";
 import { MessageService } from "../../../domain/services/message.service";
 import { ToolCallHandlerFactory } from './tool-handlers/tool-call-handler.factory';
@@ -15,7 +14,6 @@ interface CoreOptions {
 
 }
 
-const prisma = new PrismaClient
 
 export type FunctionNameType = 'extract_customer_info' | 'update_customer_info' | 'get_info_customer' | 'get_branches' | 'process_file_for_quote';
 
@@ -65,46 +63,34 @@ export class UserQuestionCoreUseCase {
 
 
 
+
       while (true) {
-
-
         const runstatus = await this.openaiService.checkStatus(threadId, runId);
-
         if (runstatus.status === 'completed') break;
 
         if (runstatus.status === 'requires_action') {
-          const requiredAction =
-            runstatus.required_action?.submit_tool_outputs.tool_calls;
-
+          const requiredAction = runstatus.required_action?.submit_tool_outputs.tool_calls;
           if (!requiredAction) break;
 
           const tool_outputs = await Promise.all(
             requiredAction.map(async (action) => {
-              const functionName: FunctionNameType =
-                action.function.name as FunctionNameType;
-
+              const functionName: FunctionNameType = action.function.name as FunctionNameType;
               console.log('[UserQuestionCoreUseCase] Processing function:', functionName);
-
               const handler = this.toolCallHandlerFactory.getHandler(functionName);
-
               if (!handler) {
                 console.warn('[UserQuestionCoreUseCase] No handler found for:', functionName);
                 return { tool_call_id: action.id, output: '{success: false, error: "Handler not found"}' };
               }
-
-              if (['get_info_customer', 'update_customer_info', 'get_branches', 'process_file_for_quote'].includes(functionName)) {
+              if ([
+                'get_info_customer',
+                'update_customer_info',
+                'get_branches',
+                'process_file_for_quote'
+              ].includes(functionName)) {
                 usedGetInfoCustomer = true;
               }
-
-              const result = await handler.execute({
-                action,
-                phoneWa,
-                threadId,
-                chatThreadId
-              });
-
-              return result;
-            }),
+              return await handler.execute({ action, phoneWa, threadId, chatThreadId });
+            })
           );
 
           await this.openaiService.submitToolOutputs(
@@ -112,9 +98,7 @@ export class UserQuestionCoreUseCase {
             runstatus.id,
             tool_outputs,
           );
-
         }
-
         await new Promise((resolve) => setTimeout(resolve, 3500));
       }
 
@@ -135,16 +119,6 @@ export class UserQuestionCoreUseCase {
           to: phoneWa,
         })
 
-        // await prisma.message.create({
-        //   data: {
-        //     role: 'assistant',
-        //     content: text,
-        //     chatThreadId,
-        //     channel: 'WHATSAPP',
-        //     direction: 'OUTBOUND',
-        //     to: phoneWa,
-        //   },
-        // });
       }
 
 

@@ -79,6 +79,8 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         branch_id,
       } = clientInfo;
 
+      console.log({ clientInfo })
+
       // Crear cotización
       const saveCustomerQuote = new SaveCustomerQuoteUseCase(
         this.quoteRepository,
