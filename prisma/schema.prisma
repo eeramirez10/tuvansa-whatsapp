@@ -191,6 +191,7 @@ model QuoteItem {
 model TemporaryFile {
   id           String     @id @default(uuid()) @db.Uuid
   fileKey      String     @unique
+  originalFilename String?
   buffer       Bytes
   mimeType     String
   chatThreadId String     @db.Uuid
@@ -235,11 +236,12 @@ model PendingMessage {
   chatThreadId String     @db.Uuid
   chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
 
-  body      String?
-  status    PendingMessageStatus @default(PENDING)
-  fileKey   String?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  body             String?
+  status           PendingMessageStatus @default(PENDING)
+  fileKey          String?
+  originalFilename String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@index([chatThreadId, status, createdAt])
 }

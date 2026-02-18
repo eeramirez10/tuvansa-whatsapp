@@ -40,6 +40,7 @@ interface SendMessageRequest extends Request {
 const prisma = new PrismaClient
 
 const ACCEPTED_FORMATS = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/pdf']
+const FILE_REPLACEMENT_CANDIDATE_BODY = '__FILE_REPLACEMENT_CANDIDATE__'
 
 const debounceTimers = new Map<string, NodeJS.Timeout>
 
@@ -87,6 +88,131 @@ export class WhatsAppController {
             this.chatThreadRepository)
             .execute(WaId)
 
+        const body = (Body ?? '').trim()
+
+        const replacementCandidate = await prisma.pendingMessage.findFirst({
+          where: {
+            chatThreadId: chatThread.id,
+            status: 'ERROR',
+            body: FILE_REPLACEMENT_CANDIDATE_BODY,
+            fileKey: {
+              not: null
+            }
+          },
+          select: {
+            id: true,
+            fileKey: true,
+            originalFilename: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        })
+
+        if (replacementCandidate?.fileKey) {
+          const normalizedBody = this.normalizeIncomingText(body)
+
+          if (this.isAffirmativeReplacement(normalizedBody)) {
+            const activePendingFile = await prisma.pendingMessage.findFirst({
+              where: {
+                chatThreadId: chatThread.id,
+                fileKey: {
+                  not: null
+                },
+                status: {
+                  in: ['PENDING', 'PROCESSING']
+                }
+              },
+              select: {
+                id: true,
+                fileKey: true,
+                originalFilename: true
+              },
+              orderBy: {
+                createdAt: 'desc'
+              }
+            })
+
+            if (activePendingFile) {
+              await prisma.pendingMessage.update({
+                where: { id: activePendingFile.id },
+                data: { status: 'ERROR' }
+              })
+
+              await this.deleteTemporaryFileByKey(activePendingFile.fileKey)
+            }
+
+            await this.clearReplacementCandidates(chatThread.id, replacementCandidate.fileKey)
+
+            await prisma.pendingMessage.create({
+              data: {
+                chatThreadId: chatThread.id,
+                body: null,
+                fileKey: replacementCandidate.fileKey,
+                originalFilename: replacementCandidate.originalFilename ?? replacementCandidate.fileKey
+              }
+            })
+
+            await prisma.pendingMessage.delete({
+              where: {
+                id: replacementCandidate.id
+              }
+            })
+
+            const candidateName = this.resolveDisplayFilename(
+              replacementCandidate.fileKey,
+              replacementCandidate.originalFilename
+            )
+            const confirmationMessage = `Perfecto, usaré el archivo "${candidateName}" para tu cotización.`
+            await this.messageService.createWhatsAppMessage({
+              body: confirmationMessage,
+              to: WaId
+            })
+            await this.messageRepository.createAssistantMessage({
+              content: confirmationMessage,
+              chatThreadId: chatThread.id,
+              to: WaId
+            })
+
+            this.scheduleProcessing(WaId)
+            return res.status(202).send('Accepted')
+          }
+
+          if (this.isNegativeReplacement(normalizedBody)) {
+            await this.clearReplacementCandidates(chatThread.id)
+
+            const keepCurrentMessage = 'Perfecto, conservaré el archivo anterior. Cuando termine, si gustas enviamos otro.'
+            await this.messageService.createWhatsAppMessage({
+              body: keepCurrentMessage,
+              to: WaId
+            })
+            await this.messageRepository.createAssistantMessage({
+              content: keepCurrentMessage,
+              chatThreadId: chatThread.id,
+              to: WaId
+            })
+
+            return res.status(202).send('Accepted')
+          }
+
+          const pendingName = this.resolveDisplayFilename(
+            replacementCandidate.fileKey,
+            replacementCandidate.originalFilename
+          )
+          const reminderMessage = `Por el momento solo puedo procesar un archivo por cotización. Tengo el archivo "${pendingName}" pendiente de confirmación. Responde "SI CAMBIAR" para usarlo o "NO CAMBIAR" para mantener el archivo anterior.`
+          await this.messageService.createWhatsAppMessage({
+            body: reminderMessage,
+            to: WaId
+          })
+          await this.messageRepository.createAssistantMessage({
+            content: reminderMessage,
+            chatThreadId: chatThread.id,
+            to: WaId
+          })
+
+          return res.status(202).send('Accepted')
+        }
+
         await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
@@ -119,7 +245,18 @@ export class WhatsAppController {
             this.chatThreadRepository)
             .execute(WaId)
 
-        const hasPendingFile = await prisma.pendingMessage.findFirst({
+        const mediaUrl = MediaUrl0
+        const contentType = MediaContentType0
+        const extension = extname.mime(contentType)[0].ext
+        const mediaSid = path.basename(url.parse(mediaUrl).pathname);
+        const filename = `${mediaSid}.${extension}`;
+        const rawOriginalFilename = this.getIncomingOriginalFilename(payload)
+        const originalFilename = this.normalizeOriginalFilename(
+          rawOriginalFilename,
+          filename
+        );
+
+        const activePendingFile = await prisma.pendingMessage.findFirst({
           where: {
             chatThreadId: chatThread.id,
             fileKey: {
@@ -130,59 +267,126 @@ export class WhatsAppController {
             }
           },
           select: {
-            id: true
-          }
-        })
-
-        const hasTemporaryFile = await prisma.temporaryFile.findFirst({
-          where: {
-            chatThreadId: chatThread.id
+            id: true,
+            status: true,
+            fileKey: true,
+            originalFilename: true,
+            updatedAt: true
           },
-          select: {
-            id: true
+          orderBy: {
+            createdAt: 'desc'
           }
         })
 
-        if (hasPendingFile || hasTemporaryFile) {
-          await this.messageService.createWhatsAppMessage({
-            body: 'Por el momento solo puedo procesar un archivo por solicitud. Ya recibí uno; cuando termine puedes enviarme otro.',
-            to: WaId
-          })
-
-          await this.messageRepository.createAssistantMessage({
-            content: 'Por el momento solo puedo procesar un archivo por solicitud. Ya recibí uno; cuando termine puedes enviarme otro.',
-            chatThreadId:chatThread.id,
-            to: WaId
-          })
-
+        if (activePendingFile?.fileKey === filename) {
+          console.log('[WhatsAppController] Duplicate file webhook ignored:', filename);
           return res.status(202).send('Accepted')
         }
 
-        const mediaUrl = MediaUrl0
-        const contentType = MediaContentType0
-        const extension = extname.mime(contentType)[0].ext
-        const mediaSid = path.basename(url.parse(mediaUrl).pathname);
-        const filename = `${mediaSid}.${extension}`;
+        if (activePendingFile) {
+          const now = Date.now();
+          const updatedAtMs = activePendingFile.updatedAt.getTime();
+          const staleThresholdMs = activePendingFile.status === 'PROCESSING'
+            ? 15 * 60 * 1000
+            : 30 * 60 * 1000;
+          const isStale = now - updatedAtMs > staleThresholdMs;
 
-        const fileStream = await this.messageService.getFileFromUrl(mediaUrl)
-        const chunks: Uint8Array[] = []
+          if (isStale) {
+            console.warn('[WhatsAppController] Releasing stale pending file:', activePendingFile.id);
+            await prisma.pendingMessage.update({
+              where: { id: activePendingFile.id },
+              data: { status: 'ERROR' }
+            })
+            await this.deleteTemporaryFileByKey(activePendingFile.fileKey)
+          } else {
+            const existingCandidate = await prisma.pendingMessage.findFirst({
+              where: {
+                chatThreadId: chatThread.id,
+                status: 'ERROR',
+                body: FILE_REPLACEMENT_CANDIDATE_BODY,
+                fileKey: {
+                  not: null
+                }
+              },
+              select: {
+                id: true,
+                fileKey: true,
+                originalFilename: true
+              },
+              orderBy: {
+                createdAt: 'desc'
+              }
+            })
 
-        for await (const chunk of fileStream) {
-          chunks.push(chunk)
+            if (existingCandidate?.fileKey === filename) {
+              console.log('[WhatsAppController] Duplicate replacement candidate ignored:', filename);
+              return res.status(202).send('Accepted')
+            }
+
+            if (existingCandidate?.id && existingCandidate.fileKey) {
+              await this.deleteTemporaryFileByKey(existingCandidate.fileKey)
+              await prisma.pendingMessage.delete({
+                where: {
+                  id: existingCandidate.id
+                }
+              })
+            }
+
+            const resolvedOriginalFilename = await this.saveIncomingTemporaryFile({
+              mediaUrl,
+              contentType,
+              filename,
+              originalFilename,
+              chatThreadId: chatThread.id
+            })
+
+            await prisma.pendingMessage.create({
+              data: {
+                chatThreadId: chatThread.id,
+                body: FILE_REPLACEMENT_CANDIDATE_BODY,
+                fileKey: filename,
+                originalFilename: resolvedOriginalFilename,
+                status: 'ERROR'
+              }
+            })
+
+            const activeName = this.resolveDisplayFilename(
+              activePendingFile.fileKey,
+              activePendingFile.originalFilename
+            )
+            const candidateName = this.resolveDisplayFilename(filename, resolvedOriginalFilename)
+            const replaceMessage = `Por el momento solo puedo procesar un archivo por cotización. Ya tengo un archivo pendiente ("${activeName}"). Si deseas reemplazarlo por este nuevo archivo ("${candidateName}"), responde "SI CAMBIAR". Si prefieres mantener el anterior, responde "NO CAMBIAR".`
+            await this.messageService.createWhatsAppMessage({
+              body: replaceMessage,
+              to: WaId
+            })
+
+            await this.messageRepository.createAssistantMessage({
+              content: replaceMessage,
+              chatThreadId: chatThread.id,
+              to: WaId
+            })
+
+            return res.status(202).send('Accepted')
+          }
         }
 
-        const fileBuffer = Buffer.concat(chunks)
+        await this.clearReplacementCandidates(chatThread.id)
 
-        const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength);
-        const saveTemporaryFile = new SaveTemporaryFileRequestDTO({ filename, fileBuffer: arrayBuffer, mimeType: contentType, chatThreadId: chatThread.id })
-
-        await this.fileRepository.saveTemporaryFile(saveTemporaryFile)
+        const resolvedOriginalFilename = await this.saveIncomingTemporaryFile({
+          mediaUrl,
+          contentType,
+          filename,
+          originalFilename,
+          chatThreadId: chatThread.id
+        })
 
         await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
             body: null,
-            fileKey: filename
+            fileKey: filename,
+            originalFilename: resolvedOriginalFilename
           }
         })
 
@@ -275,6 +479,260 @@ export class WhatsAppController {
       })
   }
 
+
+  private normalizeIncomingText = (value: string): string => {
+    return (value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+  }
+
+  private getIncomingOriginalFilename = (payload: Record<string, any>): string | undefined => {
+    const directCandidates = [
+      payload?.Body,
+      payload?.body,
+      payload?.MediaFilename0,
+      payload?.MediaFileName0,
+      payload?.MediaFilename,
+      payload?.MediaFileName,
+      payload?.mediaFilename0,
+      payload?.mediaFileName0,
+      payload?.mediaFilename,
+      payload?.mediaFileName,
+      payload?.Filename,
+      payload?.FileName,
+      payload?.filename,
+      payload?.fileName,
+    ]
+
+    const directMatch = directCandidates.find((value) =>
+      typeof value === 'string' &&
+      value.trim().length > 0 &&
+      this.isLikelyFilename(value)
+    )
+    if (directMatch) return directMatch
+
+    const channelMetadata = payload?.ChannelMetadata
+    if (typeof channelMetadata === 'string') {
+      try {
+        const parsed = JSON.parse(channelMetadata)
+        const metadataFilename = this.findFilenameInObject(parsed)
+        if (metadataFilename) return metadataFilename
+      } catch (error) {
+        console.warn('[WhatsAppController] ChannelMetadata is not valid JSON')
+      }
+    }
+
+    return undefined
+  }
+
+  private findFilenameInObject = (value: unknown): string | undefined => {
+    if (!value || typeof value !== 'object') return undefined
+
+    const queue: unknown[] = [value]
+
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current || typeof current !== 'object') continue
+
+      for (const [rawKey, rawValue] of Object.entries(current as Record<string, unknown>)) {
+        const key = rawKey.toLowerCase()
+
+        if (
+          typeof rawValue === 'string' &&
+          key.includes('filename') &&
+          rawValue.trim().length > 0 &&
+          this.isLikelyFilename(rawValue)
+        ) {
+          return rawValue
+        }
+
+        if (rawValue && typeof rawValue === 'object') {
+          queue.push(rawValue)
+        }
+      }
+    }
+
+    return undefined
+  }
+
+  private normalizeOriginalFilename = (incomingFilename: string | undefined, fallbackFilename: string): string => {
+    const fallback = path.basename(fallbackFilename) || fallbackFilename
+
+    if (!incomingFilename || typeof incomingFilename !== 'string') {
+      return fallback
+    }
+
+    const trimmed = incomingFilename.trim()
+    if (!trimmed) return fallback
+
+    const base = path.basename(trimmed)
+      .replace(/[<>:"|?*\u0000-\u001f]/g, '_')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    if (!base) return fallback
+
+    const hasExtension = path.extname(base).length > 0
+    if (hasExtension) return base
+
+    const fallbackExtension = path.extname(fallback)
+    return fallbackExtension ? `${base}${fallbackExtension}` : base
+  }
+
+  private isLikelyFilename = (value: string): boolean => {
+    const clean = path.basename(value.trim())
+    if (!clean) return false
+    return path.extname(clean).length > 1
+  }
+
+  private resolveDisplayFilename = (fileKey?: string | null, originalFilename?: string | null): string => {
+    const cleanOriginal = (originalFilename ?? '').trim()
+    if (cleanOriginal) return cleanOriginal
+    return fileKey ?? 'archivo'
+  }
+
+  private isAffirmativeReplacement = (normalizedText: string): boolean => {
+    if (!normalizedText) return false
+
+    const exactMatches = new Set([
+      'si',
+      'ok',
+      'va',
+      'dale',
+      'adelante',
+      'cambiar',
+      'reemplazar',
+      'si cambiar',
+      'si reemplazar',
+      'confirmo',
+      'usar este',
+      'usa este',
+      'si cambialo',
+      'cambialo',
+    ])
+
+    if (exactMatches.has(normalizedText)) return true
+    if (normalizedText.includes('si cambiar')) return true
+    if (normalizedText.includes('si reemplazar')) return true
+    if (normalizedText.includes('reemplaz')) return true
+    if (normalizedText.includes('cambiar')) return true
+    return false
+  }
+
+  private isNegativeReplacement = (normalizedText: string): boolean => {
+    if (!normalizedText) return false
+
+    const exactMatches = new Set([
+      'no',
+      'no cambiar',
+      'no reemplazar',
+      'mantener',
+      'conservar',
+      'deja el anterior',
+      'quedate con el anterior',
+      'no cambies',
+    ])
+
+    if (exactMatches.has(normalizedText)) return true
+    if (normalizedText.includes('no cambiar')) return true
+    if (normalizedText.includes('no reemplazar')) return true
+    if (normalizedText.includes('mantener')) return true
+    if (normalizedText.includes('conservar')) return true
+    return false
+  }
+
+  private deleteTemporaryFileByKey = async (fileKey?: string | null): Promise<void> => {
+    if (!fileKey) return
+
+    const tempFile = await prisma.temporaryFile.findUnique({
+      where: {
+        fileKey
+      },
+      select: {
+        id: true
+      }
+    })
+
+    if (!tempFile?.id) return
+
+    await this.fileRepository.deleteFile(tempFile.id)
+  }
+
+  private clearReplacementCandidates = async (chatThreadId: string, keepFileKey?: string): Promise<void> => {
+    const candidates = await prisma.pendingMessage.findMany({
+      where: {
+        chatThreadId,
+        status: 'ERROR',
+        body: FILE_REPLACEMENT_CANDIDATE_BODY,
+        fileKey: {
+          not: null
+        }
+      },
+      select: {
+        id: true,
+        fileKey: true
+      }
+    })
+
+    for (const candidate of candidates) {
+      if (keepFileKey && candidate.fileKey === keepFileKey) {
+        continue
+      }
+
+      await this.deleteTemporaryFileByKey(candidate.fileKey)
+
+      await prisma.pendingMessage.delete({
+        where: {
+          id: candidate.id
+        }
+      })
+    }
+  }
+
+  private saveIncomingTemporaryFile = async (options: {
+    mediaUrl: string
+    contentType: string
+    filename: string
+    originalFilename: string
+    chatThreadId: string
+  }): Promise<string> => {
+    const { mediaUrl, contentType, filename, originalFilename, chatThreadId } = options
+
+    const fileDownload = await this.messageService.getFileFromUrl(mediaUrl)
+    const resolvedOriginalFilename = this.normalizeOriginalFilename(
+      fileDownload.originalFilename ?? originalFilename,
+      filename
+    )
+
+    if (resolvedOriginalFilename === filename) {
+      console.warn('[WhatsAppController] Original filename unavailable from provider; using fileKey as fallback')
+    }
+
+    const fileStream = fileDownload.stream
+    const chunks: Uint8Array[] = []
+
+    for await (const chunk of fileStream) {
+      chunks.push(chunk)
+    }
+
+    const fileBuffer = Buffer.concat(chunks)
+    const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength)
+
+    await this.deleteTemporaryFileByKey(filename)
+
+    const saveTemporaryFile = new SaveTemporaryFileRequestDTO({
+      filename,
+      originalFilename: resolvedOriginalFilename,
+      fileBuffer: arrayBuffer,
+      mimeType: contentType,
+      chatThreadId
+    })
+
+    await this.fileRepository.saveTemporaryFile(saveTemporaryFile)
+    return resolvedOriginalFilename
+  }
 
 
 

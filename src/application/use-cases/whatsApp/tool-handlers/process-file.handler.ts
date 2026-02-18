@@ -31,7 +31,7 @@ export class ProcessFileHandler implements ToolCallHandler {
       console.log('[ProcessFileHandler] Processing file:', file_key);
 
       // Execute the use case to process the file
-      await new ProcessFileForQuoteUseCase(
+      const result = await new ProcessFileForQuoteUseCase(
         this.fileStorageService,
         this.fileRepository
       ).execute({ 
@@ -39,13 +39,24 @@ export class ProcessFileHandler implements ToolCallHandler {
         chatThreadId 
       });
 
+      if (!result.success) {
+        console.warn('[ProcessFileHandler] File processing failed:', result.message);
+        return {
+          tool_call_id: action.id,
+          output: JSON.stringify({
+            success: false,
+            message: result.message
+          })
+        };
+      }
+
       console.log('[ProcessFileHandler] File processed successfully:', file_key);
 
       return {
         tool_call_id: action.id,
         output: JSON.stringify({
           success: true,
-          message: `Archivo ${file_key} procesado correctamente`
+          message: result.message
         })
       };
 

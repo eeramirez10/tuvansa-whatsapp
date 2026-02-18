@@ -70,8 +70,12 @@ export class UserQuestionQueueProcessor {
                 return '';
               }
 
+              const pendingItem = p as any;
+              const originalFilename = (pendingItem.originalFilename as string | null | undefined) ?? null;
+              const displayFilename = originalFilename?.trim() ? originalFilename : p.fileKey;
+
               firstFileIncluded = true;
-              return `He adjuntado un archivo: ${p.fileKey}`;
+              return `He adjuntado un archivo: ${p.fileKey}\nNombre original del archivo: ${displayFilename}`;
             }
             return p.body?.trim() || '';
           })
@@ -81,12 +85,13 @@ export class UserQuestionQueueProcessor {
         console.log({ combinedQuestion })
 
         if (!combinedQuestion) {
+          console.warn('[UserQuestionQueueProcessor] Empty combinedQuestion; marking pending batch as ERROR');
           await prisma.pendingMessage.updateMany({
             where: {
               id: { in: ids }
             },
             data: {
-              status: 'PROCESSING'
+              status: 'ERROR'
             }
           })
           continue;

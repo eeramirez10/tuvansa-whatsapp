@@ -38,7 +38,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
     const { phoneWa, threadId, chatThreadId, action } = context;
 
     try {
-      // Enviar mensaje de proceso
+      
 
       const proccessMesagge = 'Perfecto, dame un momento en lo que genero tu solicitud...'
       await this.messageService.createWhatsAppMessage({
@@ -53,18 +53,6 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         to: phoneWa,
       })
 
-      // await prisma.message.create({
-      //   data: {
-      //     role: 'assistant',
-      //     content: 'Perfecto, dame un momento en lo que genero tu solicitud...',
-      //     chatThreadId,
-      //     channel: 'WHATSAPP',
-      //     direction: 'OUTBOUND',
-      //     to: phoneWa,
-      //   },
-      // });
-
-      // Parsear datos del cliente
       const clientInfo = JSON.parse(action.function.arguments) as ExtractedData;
 
       const {
@@ -136,18 +124,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         to: phoneWa,
       })
 
-      // await prisma.message.create({
-      //   data: {
-      //     role: 'assistant',
-      //     content: confirmationMessage,
-      //     chatThreadId,
-      //     channel: 'WHATSAPP',
-      //     direction: 'OUTBOUND',
-      //     to: phoneWa,
-      //   },
-      // });
 
-      // Resumen de la cotización
       const summarizeConversation = new SummarizeConversationUseCase(
         this.quoteRepository,
         new OpenAiFunctinsService()
@@ -192,13 +169,14 @@ export class ExtractCustomerHandler implements ToolCallHandler {
 
       const quoteUrl = `${envs.API_URL}/quotes/${quote.id}`;
 
-      // Si hay manager asignado a la sucursal
+    
       if (quote.branchId) {
         try {
           const getAssignedManagerUseCase = new GetAssignedManagerUseCase(
             this.branchRepository
           );
           const manager = await getAssignedManagerUseCase.execute(quote.branchId);
+
 
           await contactService.sendWhatsAppTemplate(
             manager.name,
