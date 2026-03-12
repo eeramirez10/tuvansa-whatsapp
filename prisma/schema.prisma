@@ -41,6 +41,16 @@ enum QuoteStatus {
   // Agrega más si lo requieres
 }
 
+enum QuoteWorkflowStatus {
+  NEW
+  VIEWED
+  DOWNLOADED
+  IN_PROGRESS
+  QUOTED
+  REJECTED
+  INVOICED
+}
+
 enum UserRole {
   ADMIN
   USER
@@ -57,6 +67,35 @@ enum Channel {
   WHATSAPP
   WEB
   EMAIL
+}
+
+enum QuoteNotificationEvent {
+  QUOTE_CREATED
+  QUOTE_VIEWED
+  QUOTE_DOWNLOADED
+  QUOTE_IN_PROGRESS
+  QUOTE_QUOTED
+  QUOTE_REJECTED
+  QUOTE_INVOICED
+}
+
+enum NotificationScope {
+  GLOBAL
+  OWN_BRANCH
+}
+
+enum WhatsappNotificationTemplate {
+  QUOTE_WEB_NOTIFICATION
+  QUOTE_WEB_NOTIFICATION_ICONS
+  QUOTE_WORKFLOW_MANAGER_NEW
+  QUOTE_WORKFLOW_MANAGER_VIEWED
+  QUOTE_WORKFLOW_MANAGER_AFTER_DOWNLOAD
+  QUOTE_WORKFLOW_MANAGER_REMINDER_PENDING_ERP
+  QUOTE_WORKFLOW_MANAGER_REJECT_REASON_PENDING_ERP
+}
+
+enum WhatsAppWorkflowSessionType {
+  ERP_QUOTE_CAPTURE
 }
 
 enum Direction {
@@ -99,8 +138,9 @@ model Branch {
   manager   User?   @relation("BranchManager", fields: [managerId], references: [id])
 
   // Relación inversa: una sucursal puede tener muchos usuarios
-  users  User[]  @relation("BranchUsers")
-  quotes Quote[]
+  users              User[]                 @relation("BranchUsers")
+  quotes             Quote[]
+  managerAssignments UserBranchAssignment[]
 }
 
 model User {
@@ -113,6 +153,7 @@ model User {
   password  String
   role      UserRole @default(USER)
   isActive  Boolean  @default(true)
+  allowWhatsappAssistant Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -120,10 +161,55 @@ model User {
 
   branch Branch? @relation("BranchUsers", fields: [branchId], references: [id], onDelete: Cascade)
 
-  QuoteVersion QuoteVersion[]
-  branches     Branch[]       @relation("BranchManager")
-  complaints_assigned    Complaint[] @relation("AssignedComplaints")
-  complaints_responded   Complaint[] @relation("RespondedComplaints")
+  QuoteVersion         QuoteVersion[]
+  branches             Branch[]       @relation("BranchManager")
+  complaints_assigned  Complaint[]    @relation("AssignedComplaints")
+  complaints_responded Complaint[]    @relation("RespondedComplaints")
+  notificationSettings UserNotificationSetting[]
+  workflowSessions     WhatsAppWorkflowSession[]
+  branchAssignments    UserBranchAssignment[]
+}
+
+model UserBranchAssignment {
+  userId    String   @db.Uuid
+  branchId  String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, branchId])
+  @@index([branchId])
+}
+
+model WhatsAppWorkflowSession {
+  id          String                     @id @default(uuid()) @db.Uuid
+  userId      String                     @db.Uuid
+  user        User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        WhatsAppWorkflowSessionType
+  quoteNumber Int
+  expiresAt   DateTime
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  @@unique([userId, type])
+  @@index([expiresAt])
+}
+
+model UserNotificationSetting {
+  id        String                       @id @default(uuid()) @db.Uuid
+  userId    String                       @db.Uuid
+  user      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     QuoteNotificationEvent
+  channel   Channel                      @default(WHATSAPP)
+  template  WhatsappNotificationTemplate @default(QUOTE_WEB_NOTIFICATION_ICONS)
+  scope     NotificationScope            @default(GLOBAL)
+  enabled   Boolean                      @default(true)
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+
+  @@unique([userId, event, channel])
+  @@index([event, channel, enabled])
 }
 
 model Customer {
@@ -153,7 +239,21 @@ model Quote {
 
   items QuoteItem[] // Relación con los items de la cotización
 
-  status QuoteStatus @default(PENDING)
+  status         QuoteStatus         @default(PENDING)
+  workflowStatus QuoteWorkflowStatus @default(NEW)
+
+  seenAt              DateTime?
+  downloadedAt        DateTime?
+  erpQuoteNumber      String?
+  erpQuoteAt          DateTime?
+  erpSystem           String?
+  erpInvoiceNumber    String?
+  invoicedAt          DateTime?
+  rejectedReason      String?
+  lastReminderAt      DateTime?
+  reminderCount       Int       @default(0)
+  workflowUpdatedAt   DateTime  @default(now())
+  workflowUpdatedById String?   @db.Uuid
 
   fileKey String?
 
@@ -168,6 +268,8 @@ model Quote {
   branch   Branch? @relation(fields: [branchId], references: [id])
 
   @@index([chatThreadId])
+  @@index([workflowStatus])
+  @@index([branchId, workflowStatus])
 }
 
 model QuoteItem {
@@ -189,14 +291,15 @@ model QuoteItem {
 }
 
 model TemporaryFile {
-  id           String     @id @default(uuid()) @db.Uuid
-  fileKey      String     @unique
-  buffer       Bytes
-  mimeType     String
-  chatThreadId String     @db.Uuid
-  chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id               String     @id @default(uuid()) @db.Uuid
+  fileKey          String     @unique
+  originalFilename String?
+  buffer           Bytes
+  mimeType         String
+  chatThreadId     String     @db.Uuid
+  chatThread       ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   @@index([chatThreadId])
   @@index([createdAt])
@@ -235,11 +338,12 @@ model PendingMessage {
   chatThreadId String     @db.Uuid
   chatThread   ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
 
-  body      String?
-  status    PendingMessageStatus @default(PENDING)
-  fileKey   String?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  body             String?
+  status           PendingMessageStatus @default(PENDING)
+  fileKey          String?
+  originalFilename String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@index([chatThreadId, status, createdAt])
 }
@@ -412,7 +516,7 @@ model Counter {
 }
 
 model Supplier {
-  id             String            @id @default(cuid())
+  id             String            @id @default(uuid()) @db.Uuid
   chatThreadId   String            @db.Uuid
   chatThread     ChatThread        @relation("ChatSuppliers", fields: [chatThreadId], references: [id], onDelete: Cascade)
   company_name   String
@@ -428,7 +532,7 @@ model Supplier {
 }
 
 model SupplierCatalog {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid()) @db.Uuid
   supplierId   String   @db.Uuid
   supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   catalog_name String
@@ -440,7 +544,7 @@ model SupplierCatalog {
 }
 
 model Complaint {
-  id             String          @id @default(cuid())
+  id             String          @id @default(uuid()) @db.Uuid
   chatThreadId   String          @db.Uuid
   chatThread     ChatThread      @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
   customerId     String?         @db.Uuid

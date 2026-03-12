@@ -1,20 +1,17 @@
 import { ToolCallHandler, ToolCallOutput, ToolCallContext } from './tool-call-handler.interface';
+import { QuoteNotificationEvent } from '../../../../domain/enums/notification.enum';
 import { ExtractedData } from '../../../../domain/interfaces/customer';
 import { SaveCustomerQuoteUseCase } from '../../save-customer-quote.use-case';
 import { SummarizeConversationUseCase } from '../../messages/summarize-conversation.use-case';
-import { GetAssignedManagerUseCase } from '../../branch/get-assigned-manager.use-case';
-import { ContactService } from '../../../../infrastructure/services/contacts.service';
 import { QuoteRepository } from '../../../../domain/repositories/quote.repository';
 import { CustomerRepository } from '../../../../domain/repositories/customer.repository';
 import { ChatThreadRepository } from '../../../../domain/repositories/chat-thread.repository';
-import { BranchRepository } from '../../../../domain/repositories/branch.repository';
 import { MessageService } from '../../../../domain/services/message.service';
 import { UpdateQuoteDto } from '../../../../domain/dtos/quotes/update-quote.dto';
 import { OpenAiFunctinsService } from '../../../../infrastructure/services/openai-functions.service';
-import { EmailService } from '../../../../infrastructure/services/mail.service';
-import { WhatsAppNotificationService } from '../../../../infrastructure/services/whatsapp-notification.service';
-import { envs } from '../../../../config/envs';
 import { MessageRepository } from '../../../../domain/repositories/message-repository';
+import { UserRepository } from '../../../../domain/repositories/user-repository';
+import { DispatchQuoteNotificationsUseCase } from '../dispatch-quote-notifications.use-case';
 
 
 
@@ -25,9 +22,9 @@ export class ExtractCustomerHandler implements ToolCallHandler {
     private quoteRepository: QuoteRepository,
     private customerRepository: CustomerRepository,
     private chatThreadRepository: ChatThreadRepository,
-    private branchRepository: BranchRepository,
     private messageService: MessageService,
-    private messageRepository: MessageRepository
+    private messageRepository: MessageRepository,
+    private userRepository: UserRepository
   ) { }
 
   canHandle(functionName: string): boolean {
@@ -38,7 +35,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
     const { phoneWa, threadId, chatThreadId, action } = context;
 
     try {
-      // Enviar mensaje de proceso
+      
 
       const proccessMesagge = 'Perfecto, dame un momento en lo que genero tu solicitud...'
       await this.messageService.createWhatsAppMessage({
@@ -53,18 +50,6 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         to: phoneWa,
       })
 
-      // await prisma.message.create({
-      //   data: {
-      //     role: 'assistant',
-      //     content: 'Perfecto, dame un momento en lo que genero tu solicitud...',
-      //     chatThreadId,
-      //     channel: 'WHATSAPP',
-      //     direction: 'OUTBOUND',
-      //     to: phoneWa,
-      //   },
-      // });
-
-      // Parsear datos del cliente
       const clientInfo = JSON.parse(action.function.arguments) as ExtractedData;
 
       const {
@@ -78,6 +63,8 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         company,
         branch_id,
       } = clientInfo;
+
+      console.log({ clientInfo })
 
       // Crear cotización
       const saveCustomerQuote = new SaveCustomerQuoteUseCase(
@@ -134,18 +121,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
         to: phoneWa,
       })
 
-      // await prisma.message.create({
-      //   data: {
-      //     role: 'assistant',
-      //     content: confirmationMessage,
-      //     chatThreadId,
-      //     channel: 'WHATSAPP',
-      //     direction: 'OUTBOUND',
-      //     to: phoneWa,
-      //   },
-      // });
 
-      // Resumen de la cotización
       const summarizeConversation = new SummarizeConversationUseCase(
         this.quoteRepository,
         new OpenAiFunctinsService()
@@ -157,8 +133,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
       // Notificaciones
       await this.notifyAboutQuote(
         this.newCustomerQuote,
-        summary,
-        phoneWa
+        summary
       );
 
       return {
@@ -181,50 +156,16 @@ export class ExtractCustomerHandler implements ToolCallHandler {
     }
   }
 
-  private async notifyAboutQuote(quote: any, summary: string, phoneWa: string): Promise<void> {
+  private async notifyAboutQuote(quote: any, summary: string): Promise<void> {
     try {
-      const contactService = new ContactService(
-        new EmailService(),
-        new WhatsAppNotificationService(this.messageService)
-      );
-
-      const quoteUrl = `${envs.API_URL}/quotes/${quote.id}`;
-
-      // Si hay manager asignado a la sucursal
-      if (quote.branchId) {
-        try {
-          const getAssignedManagerUseCase = new GetAssignedManagerUseCase(
-            this.branchRepository
-          );
-          const manager = await getAssignedManagerUseCase.execute(quote.branchId);
-
-          await contactService.sendWhatsAppTemplate(
-            manager.name,
-            manager.phone,
-            {
-              summary,
-              url: quoteUrl
-            }
-          );
-
-          await contactService.sendEmailHtmTemplate(
-            manager.name,
-            manager.email,
-            {
-              summary,
-              url: quoteUrl
-            }
-          );
-        } catch (managerError) {
-          console.warn('[ExtractCustomerHandler] No hay manager, enviando a contactos generales', managerError);
-
-        }
-      }
-
-      if (process.env.NODE_ENV === 'production') {
-
-        await contactService.sendWhatsApp({ summary, url: quoteUrl });
-      }
+      await new DispatchQuoteNotificationsUseCase(
+        this.userRepository,
+        this.messageService
+      ).execute({
+        event: QuoteNotificationEvent.QUOTE_CREATED,
+        quote,
+        summary
+      })
 
     } catch (error) {
       console.error('[ExtractCustomerHandler] Error en notificaciones:', error);

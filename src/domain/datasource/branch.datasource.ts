@@ -1,6 +1,7 @@
 import { AssingnManagerResponse } from '../dtos/branch/assign-manager-response';
 import { GetAssignedManagerResponse } from '../dtos/branch/get-assigned-manager-response';
 import { CreateBranchDto } from '../dtos/branch/create-branch.dto';
+import { UpdateBranchDto } from '../dtos/branch/update-branch.dto';
 import { BranchEntity } from '../entities/branch.entity';
 import { GetBranchesResponse } from '../dtos/branch/get-branches-response';
 
@@ -9,6 +10,7 @@ export abstract class BranchDatasource {
 
 
   abstract create(createBranchDto: CreateBranchDto): Promise<BranchEntity>
+  abstract update(id: string, updateBranchDto: UpdateBranchDto): Promise<BranchEntity>
 
   abstract getBranchs(): Promise<GetBranchesResponse[]>
 

@@ -1,3 +1,6 @@
+@token = REPLACE_WITH_JWT
+@userId = REPLACE_WITH_USER_UUID
+
 ### Login
 POST  http://localhost:3000/api/auth/login
 Content-Type: application/json
@@ -24,5 +27,25 @@ Content-Type: application/json
   "phone":"",
   "password":"",
   "branchId":"",
-  "username":""
+  "branchIds":[""],
+  "username":"",
+  "role":"USER",
+  "allowWhatsappAssistant": false
+}
+
+### Update User (multi-sucursal)
+PUT http://localhost:3000/api/users/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "lastname": "",
+  "username": "",
+  "email": "",
+  "phone": "",
+  "role": "BRANCH_MANAGER",
+  "branchIds": ["", ""],
+  "isActive": true,
+  "allowWhatsappAssistant": false
 }

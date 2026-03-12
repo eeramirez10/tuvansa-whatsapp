@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { BranchRepository } from '../../domain/repositories/branch.repository';
 import { CreateBranchDto } from '../../domain/dtos/branch/create-branch.dto';
+import { UpdateBranchDto } from '../../domain/dtos/branch/update-branch.dto';
 import { CreateBranchUseCase } from '../../application/use-cases/branch/create-branch.use-case';
+import { UpdateBranchUseCase } from '../../application/use-cases/branch/update-branch.use-case';
 import { GetBranchUseCase } from '../../application/use-cases/branch/get-branch.use-case';
 import { GetBranchsUseCase } from '../../application/use-cases/branch/get-branchs.use-case';
 import { AssingnManagerReq, AssingnManagerRequest } from '../../domain/dtos/branch/assign-manager-request';
@@ -32,6 +34,33 @@ export class BranchController {
       })
       .catch((error) => {
         res.status(500).json(error)
+      })
+  }
+
+  updateBranch = (req: Request, res: Response) => {
+    const id = `${req.params.id ?? ''}`.trim()
+    if (!id) {
+      res.status(400).json({ error: 'Branch id is required' })
+      return
+    }
+
+    const [error, updateBranchDto] = UpdateBranchDto.execute(req.body)
+    if (error || !updateBranchDto) {
+      res.status(400).json({ error })
+      return
+    }
+
+    new UpdateBranchUseCase(this.branchRepository)
+      .execute(id, updateBranchDto)
+      .then((branch) => {
+        res.json({ ...branch })
+      })
+      .catch((err) => {
+        if (err instanceof BranchNotFoundError) {
+          return res.status(404).json({ ok: false, error: err.message })
+        }
+
+        res.status(500).json({ ok: false, error: 'Error interno del servidor' })
       })
   }
 

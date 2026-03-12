@@ -1,6 +1,51 @@
+@baseUrl = http://localhost:3000/api
+@token = REPLACE_WITH_JWT
+@quoteId = REPLACE_WITH_QUOTE_UUID
+
 ### Get Quote display
-GET http://localhost:3000/api/quotes/5019e0fb-fbde-4eff-a306-d3a668ea3c76/display
-Authorization: Bearer 
+GET {{baseUrl}}/quotes/{{quoteId}}/display
+Authorization: Bearer {{token}}
 
 ### Get Quote File
-GET http://localhost:3000/api/quotes/ME7a1dd84f00d0e1bbb9a5a43ab64a2eb9.pdf/quote
+GET {{baseUrl}}/quotes/ME7a1dd84f00d0e1bbb9a5a43ab64a2eb9.pdf/quote
+
+### Download attached file by quote id
+GET {{baseUrl}}/quotes/{{quoteId}}/attachment-file
+Authorization: Bearer {{token}}
+
+### Workflow -> VIEWED
+PATCH {{baseUrl}}/quotes/{{quoteId}}/workflow-status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "workflowStatus": "VIEWED"
+}
+
+### Process attached file with AI extraction and persist items
+POST {{baseUrl}}/quotes/{{quoteId}}/process-file
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Save extraction result sent from frontend
+POST {{baseUrl}}/quotes/{{quoteId}}/extraction-result
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "cantidad": 2,
+      "unidad_original": "PZAS",
+      "unidad_normalizada": "pza",
+      "description_original": "Cople rigido ranurado Fig. 009N 2-1/2\"",
+      "description_normalizada": "cople rigido ranurado fig 009n 2-1/2\""
+    }
+  ]
+}
+
+### Delete quote (ADMIN only)
+DELETE {{baseUrl}}/quotes/{{quoteId}}
+Authorization: Bearer {{token}}

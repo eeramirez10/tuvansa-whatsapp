@@ -24,20 +24,18 @@ export class SummarizeConversationUseCase {
 
     console.log("SummarizeConversationUseCase")
 
-    console.log({ filekey: quote.fileKey })
+    // if (quote.fileKey) {
 
-    if (quote.fileKey) {
+    //   summary = "El cliente adjunto un archivo, procesar el archivo en del detalle para poder verlo"
 
-      summary = "El cliente adjunto un archivo, procesar el archivo en del detalle para poder verlo"
+    //   updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
 
-      updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
+    //   return {
+    //     summary: updatedQuote.summary
+    //   }
+    // }
 
-      return {
-        summary: updatedQuote.summary
-      }
-    }
-
-    const hoursAgo = 1;
+    const hoursAgo = 0.10;
 
     const cuttoffDate = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
 

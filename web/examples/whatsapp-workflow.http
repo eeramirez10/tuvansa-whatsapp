@@ -1,0 +1,57 @@
+@baseUrl = http://localhost:3000/api
+@managerWaId = 5210000000000
+@quoteNumber = 12345
+
+### 1) Simular click en template reminder: WF:QUOTED:<folio>
+POST {{baseUrl}}/whatsapp/incoming-messages
+Content-Type: application/json
+
+{
+  "MessageType": "button",
+  "WaId": "{{managerWaId}}",
+  "Body": "",
+  "ButtonPayload": "WF:QUOTED:{{quoteNumber}}",
+  "ButtonText": "Ya cotizada"
+}
+
+### 2) Responder solo el folio ERP (captura pendiente)
+POST {{baseUrl}}/whatsapp/incoming-messages
+Content-Type: application/json
+
+{
+  "MessageType": "text",
+  "WaId": "{{managerWaId}}",
+  "Body": "PRO-ERP-77881"
+}
+
+### 3) Alternativa directa en un solo mensaje
+POST {{baseUrl}}/whatsapp/incoming-messages
+Content-Type: application/json
+
+{
+  "MessageType": "text",
+  "WaId": "{{managerWaId}}",
+  "Body": "COTIZADA {{quoteNumber}} PRO-ERP-77881"
+}
+
+### 4) Cancelar captura pendiente de folio ERP
+POST {{baseUrl}}/whatsapp/incoming-messages
+Content-Type: application/json
+
+{
+  "MessageType": "text",
+  "WaId": "{{managerWaId}}",
+  "Body": "CANCELAR"
+}
+
+### 5) Simular selección en List Picker (motivo rechazo: No aplica)
+POST {{baseUrl}}/whatsapp/incoming-messages
+Content-Type: application/json
+
+{
+  "MessageType": "interactive",
+  "WaId": "{{managerWaId}}",
+  "Body": "",
+  "ListId": "WF:REJECTED:{{quoteNumber}}:No%20aplica",
+  "ListTitle": "No aplica"
+}

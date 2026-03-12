@@ -29,9 +29,10 @@ export class OpenAiFunctinsService {
           role: "user",
           content: `
           Haz un resumen conciso de la siguiente conversación solo pon lo que
-           pidio el cliente para cotizar en resumen y sin su nombre  , 
+           pidio el cliente para cotizar en resumen, sin su nombre ni datos del cliente , 
            omite que contacto a Tueria y valvulas del norte y sus datos personales como telefono , 
-           ubicacion, tambien pon la sucursal que eligio
+           ubicacion, tambien pon la sucursal que eligio, ademas si encuentras en el texto esto => "He adjuntado un archivo: (nombre del archivo y extension ) y  
+          "Nombre original del archivo: [nombre]" significa que el usuario subio un archivo para que tambien lo pongas en el resumen
            pon el texto sin caracteres especiales ni asteriscos pon todo de corrido, POR NINGUN MOTIVO pongas saltos de linea  :\n\n${conversation}
           `
         }

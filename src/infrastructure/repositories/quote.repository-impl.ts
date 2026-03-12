@@ -1,6 +1,10 @@
 import { AddQuoteItemsDto } from "../../domain/dtos/add-quote-items.dto";
 import { CreateQuoteDto } from "../../domain/dtos/create-quote.dto";
-import { QuoteRepository } from "../../domain/repositories/quote.repository";
+import {
+  FindQuotesPendingReminderOptions,
+  QuoteRepository,
+  ReplaceQuoteItemInput
+} from "../../domain/repositories/quote.repository";
 import { QuoteDatasource } from '../../domain/datasource/quote.datasource';
 import { QuoteEntity } from "../../domain/entities/quote.entity";
 import { QuoteItemEntity } from "../../domain/entities/quote-item.entity";
@@ -49,6 +53,18 @@ export class QuoteRepositoryImpl extends QuoteRepository {
 
   updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity> {
     return this.quoteDatasource.updateQuote(id, updateQuoteDto)
+  }
+
+  replaceQuoteItems(quoteId: string, items: ReplaceQuoteItemInput[]): Promise<QuoteEntity> {
+    return this.quoteDatasource.replaceQuoteItems(quoteId, items)
+  }
+
+  findQuotesPendingReminder(options: FindQuotesPendingReminderOptions): Promise<QuoteEntity[]> {
+    return this.quoteDatasource.findQuotesPendingReminder(options)
+  }
+
+  deleteQuote(id: string): Promise<void> {
+    return this.quoteDatasource.deleteQuote(id)
   }
 
 

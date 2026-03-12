@@ -7,7 +7,10 @@
     "build": "rm -rf ./dist && tsc -p tsconfig.node.json && cp src/infrastructure/template/pdf/print.css dist/infrastructure/template/pdf/print.css",
     "start": "NODE_ENV=production npm run build && NODE_ENV=production node dist/app.js",
     "test": "node --test --import tsx \"tests/**/*.test.ts\"",
-    "pdf:smoke": "tsx src/dev/pdf-smoke.ts"
+    "pdf:smoke": "tsx src/dev/pdf-smoke.ts",
+    "prisma:migrate:dev": "set -a; . ./.env.development; set +a; prisma migrate dev",
+    "prisma:generate:dev": "set -a; . ./.env.development; set +a; prisma generate",
+    "prisma:migrate:reset:dev":"set -a; . ./.env.development; set +a; prisma migrate reset --force --skip-seed"
   },
   "keywords": [],
   "author": "",

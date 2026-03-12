@@ -46,7 +46,12 @@ export class AuthMiddleware {
           id: payload.id
         },
         include: {
-          branch: true
+          branch: true,
+          branchAssignments: {
+            include: {
+              branch: true
+            }
+          }
         }
       })
 
@@ -57,7 +62,18 @@ export class AuthMiddleware {
       }
 
 
-      req.body.user = user;
+      const allBranchIds = [
+        `${user.branchId ?? ''}`.trim(),
+        ...user.branchAssignments.map((item) => `${item.branchId ?? ''}`.trim())
+      ].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index)
+      const branchIds = user.role === 'BRANCH_MANAGER'
+        ? allBranchIds
+        : allBranchIds.length > 0 ? [allBranchIds[0]] : []
+
+      req.body.user = {
+        ...user,
+        branchIds
+      };
 
 
       next();
@@ -73,4 +89,3 @@ export class AuthMiddleware {
 
 
 }
-

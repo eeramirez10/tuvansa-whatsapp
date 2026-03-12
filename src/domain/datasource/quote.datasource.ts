@@ -7,6 +7,7 @@ import { GetQuotesDto } from "../dtos/quotes/get-quotes.dto";
 import { Quote } from "@prisma/client";
 import { UpdateQuoteDto } from '../dtos/quotes/update-quote.dto';
 import { PaginationResult } from "../entities/pagination-result";
+import { FindQuotesPendingReminderOptions, ReplaceQuoteItemInput } from "../repositories/quote.repository";
 
 
 
@@ -28,5 +29,8 @@ export abstract class QuoteDatasource {
 
   abstract updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity>
   abstract updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity>
+  abstract replaceQuoteItems(quoteId: string, items: ReplaceQuoteItemInput[]): Promise<QuoteEntity>
+  abstract findQuotesPendingReminder(options: FindQuotesPendingReminderOptions): Promise<QuoteEntity[]>
+  abstract deleteQuote(id: string): Promise<void>
 
 }

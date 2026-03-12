@@ -17,6 +17,9 @@ import { BranchRepositoryImpl } from '../../infrastructure/repositories/branch.r
 import { BranchPostgresqlDatasource } from "../../infrastructure/datasource/branch-postgresql.datasource";
 import { MessageRepositoryImpl } from "../../infrastructure/repositories/message.repository-impl";
 import { MessagePostgresqlDatasource } from "../../infrastructure/datasource/message-postgresql.datasource";
+import { UserPostgresqlDatasource } from "../../infrastructure/datasource/user-postgresql.datasource";
+import { UserRepositoryImpl } from "../../infrastructure/repositories/user-repository-impl";
+
 
 
 
@@ -37,6 +40,8 @@ export class WhatsAppRoutes {
     const fileRepositoryImpl = new FileRepositoryImpl(new FilePostgresqlDataSource());
     const branchRepository = new BranchRepositoryImpl(new BranchPostgresqlDatasource())
     const messageRepository = new MessageRepositoryImpl(new MessagePostgresqlDatasource())
+    const userDatasource = new UserPostgresqlDatasource()
+    const userRepository = new UserRepositoryImpl(userDatasource)
 
     const whastAppController = new WhatsAppController(
       openAiService,
@@ -48,7 +53,8 @@ export class WhatsAppRoutes {
       s3FileStorageService,
       fileRepositoryImpl,
       branchRepository,
-      messageRepository
+      messageRepository,
+      userRepository
     )
 
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))

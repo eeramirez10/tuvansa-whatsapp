@@ -8,7 +8,7 @@ export abstract class FileRepository {
 
 
   abstract saveTemporaryFile(request: SaveTemporaryFileRequestDTO): Promise<SaveTemporaryFileResponseDTO>
-  abstract findByFileKey(fileKey: string): Promise<FindFileByKeyResponseDTO>
+  abstract findByFileKey(fileKey: string): Promise<FindFileByKeyResponseDTO | null>
   abstract deleteFile(id: string): Promise<void>
 
 

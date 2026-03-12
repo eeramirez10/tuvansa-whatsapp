@@ -14,6 +14,7 @@ interface UserEntityOptions {
   createdAt: Date
   updatedAt: Date
   username: string;
+  allowWhatsappAssistant?: boolean
 
 
 }
@@ -33,6 +34,7 @@ export class UserEntity implements User {
   quoteHistories?: QuoteHistoryEntity[] 
   branchId: string;
   username: string;
+  allowWhatsappAssistant: boolean;
 
 
   constructor(options: UserEntityOptions) {
@@ -48,6 +50,7 @@ export class UserEntity implements User {
     this.createdAt = options.createdAt
     this.updatedAt = options.updatedAt
     this.username = options.username
+    this.allowWhatsappAssistant = options.allowWhatsappAssistant ?? false
 
   }
   
@@ -56,5 +59,4 @@ export class UserEntity implements User {
 
 
 }
-
 

@@ -31,6 +31,11 @@ export type WhatsAppSendMediaResult = {
   providerMessageSid: string;
 };
 
+export interface GetFileFromUrlResult {
+  stream: ReadableStream<Uint8Array<ArrayBufferLike>>
+  originalFilename?: string
+}
+
 
 export abstract class MessageService {
 
@@ -40,7 +45,7 @@ export abstract class MessageService {
 
   abstract deleteFileFromApi(options: DeleteFileDto): Promise<void>
 
-  abstract getFileFromUrl(mediaUrl: string): Promise<ReadableStream<Uint8Array<ArrayBufferLike>>>
+  abstract getFileFromUrl(mediaUrl: string): Promise<GetFileFromUrlResult>
 
   abstract sendMediaMessage(options: WhatsAppSendMediaParams): Promise<WhatsAppSendMediaResult>
 

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "QuoteWorkflowStatus" ADD VALUE IF NOT EXISTS 'IN_PROGRESS';

@@ -1,9 +1,16 @@
+import { envs } from "../../../config/envs";
+
 export enum WhatsappTemplate {
   QUOTE_PDF_FOLLOWUP_FILE = "QUOTE_PDF_FOLLOWUP_FILE",
   COTIZACION_IA_WITH_FILE_DYNAMYC = "COTIZACION_IA_WITH_FILE_DYNAMYC",
   COTIZACION_TUVANSA_IA_02 = "COTIZACION_TUVANSA_IA_02",
   QUOTE_WEB_NOTIFICATION = 'QUOTE_WEB_NOTIFICATION',
-  QUOTE_WEB_NOTIFICATION_ICONS = "QUOTE_WEB_NOTIFICATION_ICONS"
+  QUOTE_WEB_NOTIFICATION_ICONS = "QUOTE_WEB_NOTIFICATION_ICONS",
+  QUOTE_WORKFLOW_MANAGER_NEW = "QUOTE_WORKFLOW_MANAGER_NEW",
+  QUOTE_WORKFLOW_MANAGER_VIEWED = "QUOTE_WORKFLOW_MANAGER_VIEWED",
+  QUOTE_WORKFLOW_MANAGER_AFTER_DOWNLOAD = "QUOTE_WORKFLOW_MANAGER_AFTER_DOWNLOAD",
+  QUOTE_WORKFLOW_MANAGER_REMINDER_PENDING_ERP = "QUOTE_WORKFLOW_MANAGER_REMINDER_PENDING_ERP",
+  QUOTE_WORKFLOW_MANAGER_REJECT_REASON_PENDING_ERP = "QUOTE_WORKFLOW_MANAGER_REJECT_REASON_PENDING_ERP"
 }
 
 export type QuoteTemplateData = {
@@ -15,9 +22,24 @@ export type QuoteTemplateData = {
   quote?: {
     summary: string
   }; // tu tipo de Quote
+  workflow?: {
+    quoteNumber?: string | number
+    actionView?: string
+    actionDownload?: string
+    actionAccept?: string
+    actionRejectNotQuote?: string
+    actionRejectOutOfScope?: string
+    actionRejectMenu?: string
+    actionRejectClientDeclined?: string
+    actionRejectNoResponse?: string
+    actionRejectTooExpensive?: string
+    actionQuoted?: string
+    actionRejected?: string
+  };
   presignedUrl?: string;
   mediaUrl?: string;
   url?: string
+  downloadUrl?: string
 };
 
 type TemplateConfig = {
@@ -64,6 +86,58 @@ export const WHATSAPP_TEMPLATES: Record<WhatsappTemplate, TemplateConfig> = {
         2: data.url
       };
     }
+  },
+  [WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_NEW]: {
+    contentSid: envs.TWILIO_TEMPLATE_WORKFLOW_NEW ?? "",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: data.quote?.summary ?? '',
+        2: `${data.workflow?.quoteNumber ?? ''}`,
+        3: data.workflow?.actionView ?? '',
+        4: data.url ?? ''
+      };
+    }
+  },
+  [WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_VIEWED]: {
+    contentSid: envs.TWILIO_TEMPLATE_WORKFLOW_VIEWED ?? "",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: `${data.workflow?.quoteNumber ?? ''}`,
+        2: data.workflow?.actionDownload ?? ''
+      };
+    }
+  },
+  [WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_AFTER_DOWNLOAD]: {
+    contentSid: envs.TWILIO_TEMPLATE_WORKFLOW_AFTER_DOWNLOAD ?? envs.TWILIO_TEMPLATE_WORKFLOW_REMINDER ?? "",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: `${data.workflow?.quoteNumber ?? ''}`,
+        2: data.workflow?.actionAccept ?? '',
+        3: data.workflow?.actionRejectMenu ?? ''
+      };
+    }
+  },
+  [WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_REMINDER_PENDING_ERP]: {
+    contentSid: envs.TWILIO_TEMPLATE_WORKFLOW_REMINDER_PENDING_ERP ?? "",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: `${data.workflow?.quoteNumber ?? ''}`,
+        2: data.workflow?.actionQuoted ?? '',
+        3: data.workflow?.actionRejectMenu ?? ''
+      };
+    }
+  },
+  [WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_REJECT_REASON_PENDING_ERP]: {
+    contentSid: envs.TWILIO_TEMPLATE_WORKFLOW_REJECT_REASON_PENDING_ERP ?? "",
+    buildVars: function (data: QuoteTemplateData): Record<string, string> {
+      return {
+        1: `${data.workflow?.quoteNumber ?? ''}`,
+        2: data.workflow?.actionRejectNotQuote ?? '',
+        3: data.workflow?.actionRejectOutOfScope ?? '',
+        4: data.workflow?.actionRejectClientDeclined ?? '',
+        5: data.workflow?.actionRejectNoResponse ?? '',
+        6: data.workflow?.actionRejectTooExpensive ?? ''
+      };
+    }
   }
 }
-

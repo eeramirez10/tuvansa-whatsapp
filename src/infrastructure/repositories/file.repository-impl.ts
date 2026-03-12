@@ -13,7 +13,7 @@ export class FileRepositoryImpl implements FileRepository {
   saveTemporaryFile(request: SaveTemporaryFileRequestDTO): Promise<SaveTemporaryFileResponseDTO> {
     return this.fileDatasource.saveTemporaryFile(request)
   }
-  findByFileKey(fileKey: string): Promise<FindFileByKeyResponseDTO> {
+  findByFileKey(fileKey: string): Promise<FindFileByKeyResponseDTO | null> {
     return this.fileDatasource.findByFileKey(fileKey)
   }
   deleteFile(id: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, QuoteWorkflowStatus } from "@prisma/client";
 import { QuoteDatasource } from "../../domain/datasource/quote.datasource";
 import { AddQuoteItemsDto } from "../../domain/dtos/add-quote-items.dto";
 import { CreateQuoteDto } from "../../domain/dtos/create-quote.dto";
@@ -9,6 +9,7 @@ import { GetQuotesDto } from "../../domain/dtos/quotes/get-quotes.dto";
 import { UpdateQuoteDto } from "../../domain/dtos/quotes/update-quote.dto";
 import { PaginationResult } from "../../domain/entities/pagination-result";
 import dayjs from "dayjs";
+import { FindQuotesPendingReminderOptions, ReplaceQuoteItemInput } from "../../domain/repositories/quote.repository";
 
 
 const prismaClient = new PrismaClient()
@@ -16,6 +17,40 @@ const prismaClient = new PrismaClient()
 
 export class QuotePostgresqlDatasource extends QuoteDatasource {
 
+  async findQuotesPendingReminder(options: FindQuotesPendingReminderOptions): Promise<QuoteEntity[]> {
+    const limit = Math.max(1, Math.min(200, Number(options.limit ?? 100)))
+
+    return prismaClient.quote.findMany({
+      where: {
+        workflowStatus: QuoteWorkflowStatus.IN_PROGRESS,
+        workflowUpdatedById: { not: null },
+        OR: [
+          {
+            lastReminderAt: null,
+            workflowUpdatedAt: { lte: options.beforeDate }
+          },
+          {
+            lastReminderAt: { lte: options.beforeDate }
+          }
+        ]
+      },
+      orderBy: {
+        workflowUpdatedAt: 'asc'
+      },
+      take: limit,
+      include: {
+        customer: true,
+        items: true,
+        branch: true
+      }
+    })
+  }
+
+  async deleteQuote(id: string): Promise<void> {
+    await prismaClient.quote.delete({
+      where: { id }
+    })
+  }
 
 
   async updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity> {
@@ -32,6 +67,49 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     })
   }
 
+  async replaceQuoteItems(quoteId: string, items: ReplaceQuoteItemInput[]): Promise<QuoteEntity> {
+    await prismaClient.$transaction(async (tx) => {
+      await tx.quoteItem.deleteMany({
+        where: { quoteId }
+      })
+
+      if (!items.length) return
+
+      await tx.quoteItem.createMany({
+        data: items.map((item) => ({
+          quoteId,
+          description: item.description,
+          quantity: item.quantity,
+          um: item.um ?? null,
+          ean: item.ean ?? null,
+          codigo: item.codigo ?? null,
+          price: item.price ?? 0,
+          cost: item.cost ?? 0
+        }))
+      })
+    })
+
+    const updatedQuote = await prismaClient.quote.findFirst({
+      where: { id: quoteId },
+      include: {
+        customer: true,
+        items: true,
+        branch: true,
+        chatThread: {
+          include: {
+            messages: true
+          }
+        }
+      }
+    })
+
+    if (!updatedQuote) {
+      throw new Error('Cotización no encontrada')
+    }
+
+    return updatedQuote
+  }
+
   async getQuote(id: string): Promise<QuoteEntity | null> {
 
     try {
@@ -43,6 +121,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         include: {
           customer: true,
           items: true,
+          branch: true,
           chatThread: {
             include: {
               messages: true
@@ -66,7 +145,15 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     const page = Math.max(1, Number(getQuotesDto.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(getQuotesDto.pageSize ?? 20)));
 
-    const where = this.buildDateRange(getQuotesDto.startDate, getQuotesDto.endDate);
+    const where: Record<string, any> = this.buildDateRange(getQuotesDto.startDate, getQuotesDto.endDate) ?? {};
+    if (Array.isArray(getQuotesDto.branchIds) && getQuotesDto.branchIds.length > 0) {
+      where.branchId = { in: getQuotesDto.branchIds };
+    } else if (getQuotesDto.branchId) {
+      where.branchId = getQuotesDto.branchId;
+    }
+    if (getQuotesDto.workflowStatus) {
+      where.workflowStatus = getQuotesDto.workflowStatus;
+    }
 
     const skip = (page - 1) * pageSize;
     const take = pageSize;
@@ -84,6 +171,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           include: {
             customer: true,
             items: true,
+            branch: true,
             // OJO: si messages es grande, considera limitar campos o contar:
             chatThread: {
               include: {
@@ -120,7 +208,8 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
         where: { quoteNumber },
         include: {
           customer: true,
-          items: true
+          items: true,
+          branch: true
         }
       })
 

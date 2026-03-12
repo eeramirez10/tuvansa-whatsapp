@@ -14,11 +14,13 @@ export abstract class CustomerDatasource {
 
   abstract updateCustomer(updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity>
 
+  abstract updateCustomerByWhatsappNumber(whatsappNumber: string, updateCustometDto: UpdateCustomerDto): Promise<CustomerEntity>
+
   abstract getById(customerId: string): Promise<CustomerEntity | null>
 
-  abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
+  abstract getCustomerByQuoteNumber(quoteNumber: number,): Promise<CustomerEntity | null>
 
-  abstract getCustomers() : Promise<CustomerEntity[]>
+  abstract getCustomers(): Promise<CustomerEntity[]>
 
-  abstract findByWhatsappPhone(phoneWa:string):Promise<CustomerEntity>
+  abstract findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity>
 }

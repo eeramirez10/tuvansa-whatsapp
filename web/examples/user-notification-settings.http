@@ -1,0 +1,89 @@
+@baseUrl = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Ijg4ZDMxNDFhLTBhNTYtNDI2ZC1iNjk0LWNkNGE1YTMzMDg0NiIsImlhdCI6MTc3MzE2NzM2NywiZXhwIjoxNzczMTk2MTY3fQ.xmfhOt-3AlRjqOTyJMGcj_TKwtYtL8qVQP4EAPO2318
+@userId = REPLACE_WITH_USER_UUID
+
+### List notification settings (ADMIN)
+GET {{baseUrl}}/api/users/notification-settings
+Authorization: Bearer {{token}}
+
+### List settings filtered by user
+GET {{baseUrl}}/api/users/notification-settings?userId={{userId}}
+Authorization: Bearer {{token}}
+
+### Upsert: notify manager-style on new quote for own branch
+PUT {{baseUrl}}/api/users/notification-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "event": "QUOTE_CREATED",
+  "channel": "WHATSAPP",
+  "template": "QUOTE_WORKFLOW_MANAGER_NEW",
+  "scope": "OWN_BRANCH",
+  "enabled": true
+}
+
+### Upsert: notify general users when quote is quoted
+PUT {{baseUrl}}/api/users/notification-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "event": "QUOTE_QUOTED",
+  "channel": "WHATSAPP",
+  "template": "QUOTE_WEB_NOTIFICATION_ICONS",
+  "scope": "GLOBAL",
+  "enabled": true
+}
+
+### Disable one rule
+PUT {{baseUrl}}/api/users/notification-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "event": "QUOTE_QUOTED",
+  "channel": "WHATSAPP",
+  "template": "QUOTE_WEB_NOTIFICATION_ICONS",
+  "scope": "GLOBAL",
+  "enabled": false
+}
+
+### Plan B: branch manager must be explicitly assigned now (no automatic by role)
+PUT {{baseUrl}}/api/users/notification-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "event": "QUOTE_CREATED",
+  "channel": "WHATSAPP",
+  "template": "QUOTE_WORKFLOW_MANAGER_NEW",
+  "scope": "OWN_BRANCH",
+  "enabled": true
+}
+
+### Send test notification for a single user/template
+POST {{baseUrl}}/api/users/notification-settings/test
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "event": "QUOTE_CREATED",
+  "channel": "WHATSAPP",
+  "template": "QUOTE_WEB_NOTIFICATION_ICONS"
+}
+
+### Send test notifications for all enabled WhatsApp settings
+POST {{baseUrl}}/api/users/notification-settings/test-all
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "enabledOnly": true,
+  "channel": "WHATSAPP"
+}
