@@ -56,7 +56,12 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
         email
       },
       include: {
-        branch: true
+        branch: true,
+        branchAssignments: {
+          include: {
+            branch: true
+          }
+        }
       }
     })
 
@@ -71,7 +76,7 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
 
   async create(createUserDto: CreateUserDto): Promise<UserEntity> {
 
-    const { password, ...rest } = createUserDto
+    const { password, branchIds, ...rest } = createUserDto
 
     // console.log(rest)
 
@@ -81,13 +86,55 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
       throw CustomError.BadRequest('User already exist')
     }
 
+    if (rest.role !== 'BRANCH_MANAGER' && branchIds.length > 1) {
+      throw CustomError.BadRequest('Solo BRANCH_MANAGER puede tener múltiples sucursales')
+    }
+
+    const branches = await prismaClient.branch.findMany({
+      where: {
+        id: {
+          in: branchIds
+        }
+      },
+      select: { id: true }
+    })
+
+    if (branches.length !== branchIds.length) {
+      throw CustomError.BadRequest('Branch not found')
+    }
+
     const hashedPassword = this.hashPassword(password)
 
-    const newUser = await prismaClient.user.create({
-      data: {
-        ...rest,
-        password: hashedPassword,
+    const newUser = await prismaClient.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          ...rest,
+          branchId: branchIds[0] ?? null,
+          password: hashedPassword,
+        }
+      })
+
+      if (branchIds.length > 0) {
+        await tx.userBranchAssignment.createMany({
+          data: branchIds.map((branchId) => ({
+            userId: user.id,
+            branchId
+          })),
+          skipDuplicates: true
+        })
       }
+
+      return tx.user.findUniqueOrThrow({
+        where: { id: user.id },
+        include: {
+          branch: true,
+          branchAssignments: {
+            include: {
+              branch: true
+            }
+          }
+        }
+      })
     })
 
     return newUser

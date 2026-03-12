@@ -1,0 +1,33 @@
+@baseUrl = http://localhost:3000/api
+@branchId = REPLACE_WITH_BRANCH_UUID
+@managerId = REPLACE_WITH_MANAGER_USER_UUID
+
+### Crear sucursal
+POST {{baseUrl}}/branchs
+Content-Type: application/json
+
+{
+  "name": "Sucursal prueba",
+  "address": "Dirección de prueba"
+}
+
+### Listar sucursales
+GET {{baseUrl}}/branchs
+
+### Obtener sucursal por id
+GET {{baseUrl}}/branchs/{{branchId}}
+
+### Editar sucursal
+PUT {{baseUrl}}/branchs/{{branchId}}
+Content-Type: application/json
+
+{
+  "name": "Sucursal actualizada",
+  "address": "Dirección actualizada"
+}
+
+### Asignar gerente
+PUT {{baseUrl}}/branchs/{{branchId}}/assign-manager/{{managerId}}
+Content-Type: application/json
+
+{}

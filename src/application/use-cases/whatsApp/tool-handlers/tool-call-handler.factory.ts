@@ -1,4 +1,3 @@
-import { PrismaClient } from "@prisma/client";
 import { ToolCallHandler } from "./tool-call-handler.interface";
 import { ExtractCustomerHandler } from "./extract-customer.handler";
 import { UpdateCustomerHandler } from "./update-customer.handler";
@@ -12,9 +11,9 @@ import { ChatThreadRepository } from "../../../../domain/repositories/chat-threa
 import { BranchRepository } from "../../../../domain/repositories/branch.repository";
 import { FileStorageService } from "../../../../domain/services/file-storage.service";
 import { MessageService } from "../../../../domain/services/message.service";
-import { ContactService } from "../../../../infrastructure/services/contacts.service";
 import { OpenAiFunctinsService } from "../../../../infrastructure/services/openai-functions.service";
 import { MessageRepository } from '../../../../domain/repositories/message-repository';
+import { UserRepository } from "../../../../domain/repositories/user-repository";
 
 
 export class ToolCallHandlerFactory {
@@ -27,12 +26,12 @@ export class ToolCallHandlerFactory {
     private readonly fileRepository: FileRepository,
     private readonly chatThreadRepository: ChatThreadRepository,
     private readonly branchRepository: BranchRepository,
+    private readonly userRepository: UserRepository,
     private readonly messageRepository: MessageRepository,
    
 
     // Services
     private readonly messageService: MessageService,
-    private readonly contactService: ContactService,
     private readonly fileStorageService: FileStorageService,
     private readonly openAiFunctions: OpenAiFunctinsService,
   ) {
@@ -48,9 +47,9 @@ export class ToolCallHandlerFactory {
       this.quoteRepository,
       this.customerRepository,
       this.chatThreadRepository,
-      this.branchRepository,
       this.messageService,
-      this.messageRepository
+      this.messageRepository,
+      this.userRepository
     );
 
 

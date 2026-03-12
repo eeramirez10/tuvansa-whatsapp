@@ -1,4 +1,5 @@
 import { CreateBranchDto } from "../../domain/dtos/branch/create-branch.dto";
+import { UpdateBranchDto } from "../../domain/dtos/branch/update-branch.dto";
 import { BranchEntity } from "../../domain/entities/branch.entity";
 import { BranchRepository } from "../../domain/repositories/branch.repository";
 import { BranchDatasource } from '../../domain/datasource/branch.datasource';
@@ -20,6 +21,10 @@ export class BranchRepositoryImpl implements BranchRepository {
 
   getBranch(id: string): Promise<BranchEntity> {
     return this.branchDatasource.getBranch(id)
+  }
+
+  update(id: string, updateBranchDto: UpdateBranchDto): Promise<BranchEntity> {
+    return this.branchDatasource.update(id, updateBranchDto)
   }
 
   create(createBranchDto: CreateBranchDto): Promise<BranchEntity> {

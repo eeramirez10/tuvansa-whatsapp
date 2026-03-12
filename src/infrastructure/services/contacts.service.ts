@@ -1,6 +1,7 @@
 import { WhatsappTemplate } from '../template/whatsapp/whatsapp-templates';
 import { EmailService } from './mail.service';
 import { WhatsAppNotificationService } from './whatsapp-notification.service';
+import { buildWorkflowPayload } from '../../application/use-cases/whatsApp/workflow-payload';
 
 interface Contact {
   name: string
@@ -10,7 +11,8 @@ interface Contact {
 
 type SendPropsType = {
   summary: string,
-  url: string
+  url: string,
+  quoteNumber?: number | string
 }
 
 
@@ -80,6 +82,36 @@ export class ContactService {
     } catch (error) {
       console.error(`[ContactService] Error al enviar WhatsApp a ${name}:`, error);
       throw new Error(`Error enviando WhatsApp a ${name}`);
+    }
+  }
+
+  async sendWorkflowNewQuoteTemplate(name: string, waPhone: string, sendProps: SendPropsType) {
+    const { summary, url, quoteNumber } = sendProps;
+    const safeQuoteNumber = Number(quoteNumber ?? 0)
+    const canUseWorkflowTemplate = Number.isFinite(safeQuoteNumber) && safeQuoteNumber > 0
+
+    if (!canUseWorkflowTemplate) {
+      await this.sendWhatsAppTemplate(name, waPhone, sendProps)
+      return
+    }
+
+    try {
+      await this.whatsAppNotificationService.sendTemplateMessage(
+        WhatsappTemplate.QUOTE_WORKFLOW_MANAGER_NEW,
+        {
+          to: waPhone,
+          quote: { summary },
+          url,
+          workflow: {
+            quoteNumber: safeQuoteNumber,
+            actionView: buildWorkflowPayload('VIEW', safeQuoteNumber)
+          }
+        }
+      )
+      console.log(`[ContactService] Workflow template NEW enviado a ${name} (${waPhone})`)
+    } catch (error) {
+      console.warn(`[ContactService] Workflow template NEW no disponible, fallback default para ${name}`)
+      await this.sendWhatsAppTemplate(name, waPhone, sendProps)
     }
   }
 

@@ -8,10 +8,13 @@ import { QuoteVersionRepository } from '../../../src/domain/repositories/quote-v
 import type { OpenAiFunctinsService } from '../../../src/infrastructure/services/openai-functions.service';
 import type { PrismaClient, VersionStatus } from '@prisma/client';
 import type { FileStorageService } from '../../../src/domain/services/file-storage.service';
+import type { QuoteExtractionService } from '../../../src/domain/services/quote-extraction.service';
 import type { QuoteVersionWithItems } from '../../../src/domain/datasource/quote-version.datasource';
 import type { SaveDraftDto } from '../../../src/domain/dtos/versions/save-draft.dto';
 import type { QuoteVersionEntity } from '../../../src/domain/entities/quote-version.entity';
 import type { QuoteVersionItemEntity } from '../../../src/domain/entities/quote-version-item.entity';
+import type { UserRepository } from '../../../src/domain/repositories/user-repository';
+import type { MessageService } from '../../../src/domain/services/message.service';
 
 const flushPromises = () => new Promise<void>((resolve) => setImmediate(resolve));
 
@@ -99,7 +102,10 @@ const createController = (options: QuoteVersionRepoOptions = {}) => {
     repo,
     {} as OpenAiFunctinsService,
     {} as PrismaClient,
-    {} as FileStorageService
+    {} as FileStorageService,
+    {} as QuoteExtractionService,
+    {} as UserRepository,
+    {} as MessageService
   );
 
   return { controller, repo };

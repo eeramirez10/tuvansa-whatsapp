@@ -27,6 +27,10 @@ export class WhatsAppNotificationService {
       throw new Error(`Template no configurado: ${template}`)
     }
 
+    if (!confiig.contentSid) {
+      throw new Error(`Template sin contentSid configurado: ${template}`)
+    }
+
     const variables = confiig.buildVars(data)
 
     try {

@@ -7,6 +7,20 @@ import { PaginationResult } from "../entities/pagination-result";
 import { QuoteItemEntity } from "../entities/quote-item.entity";
 import { QuoteEntity } from "../entities/quote.entity";
 
+export interface ReplaceQuoteItemInput {
+  description: string
+  quantity: number
+  um?: string | null
+  ean?: string | null
+  codigo?: string | null
+  price?: number | null
+  cost?: number | null
+}
+
+export interface FindQuotesPendingReminderOptions {
+  beforeDate: Date
+  limit?: number
+}
 
 export abstract class QuoteRepository {
 
@@ -24,5 +38,11 @@ export abstract class QuoteRepository {
   abstract updateQuoteItem(id: string, updateQuoteItemDto: UpdateQuoteItemDto): Promise<QuoteItemEntity>
 
   abstract updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity>
+
+  abstract replaceQuoteItems(quoteId: string, items: ReplaceQuoteItemInput[]): Promise<QuoteEntity>
+
+  abstract findQuotesPendingReminder(options: FindQuotesPendingReminderOptions): Promise<QuoteEntity[]>
+
+  abstract deleteQuote(id: string): Promise<void>
 
 }

@@ -6,6 +6,7 @@ import { QuotesRoutes } from "./quotes/routes";
 import { AuthRoutes } from './auth/routes';
 import { BranchRoutes } from "./branchs/routes";
 import { QuotesVersionRoutes } from "./quote-version/routes";
+import { UsersRoutes } from "./users/routes";
 
 
 export class AppRoutes {
@@ -22,6 +23,7 @@ export class AppRoutes {
     routes.use('/api/quotes', QuotesRoutes.routes())
     routes.use('/api/branchs', BranchRoutes.routes())
     routes.use('/api/quote-versions', QuotesVersionRoutes.routes())
+    routes.use('/api/users', UsersRoutes.routes())
 
     return routes
   }
