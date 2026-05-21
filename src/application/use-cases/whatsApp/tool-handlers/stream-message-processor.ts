@@ -119,7 +119,7 @@ export class StreamMessageProcessor {
    * Send a single message via WhatsApp and persist to database
    */
   private async sendStreamedMessage(content: string): Promise<void> {
-    await this.messageService.createWhatsAppMessage({
+    const twilioResponse = await this.messageService.createWhatsAppMessage({
       to: this.phoneWa,
       body: content,
     });
@@ -131,6 +131,9 @@ export class StreamMessageProcessor {
         chatThreadId: this.chatThreadId,
         channel: 'WHATSAPP',
         direction: 'OUTBOUND',
+        provider: 'TWILIO',
+        providerMessageId: twilioResponse.providerMessageSid,
+        status: 'QUEUED',
         to: this.phoneWa,
       },
     });

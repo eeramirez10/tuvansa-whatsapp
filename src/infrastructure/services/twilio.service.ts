@@ -14,9 +14,11 @@ import { Buffer } from "node:buffer";
 interface SendWhatsAppMessageOptions {
   body?: string
   to: string
+  from?: string
   mediaUrl?: string[]
   contentSid?: string
   contentVariables?: string
+  statusCallbackUrl?: string
 }
 
 export class TwilioService implements MessageService {
@@ -32,6 +34,7 @@ export class TwilioService implements MessageService {
   async sendMediaMessage(options: WhatsAppSendMediaParams): Promise<WhatsAppSendMediaResult> {
     const {
       to,
+      from,
       body,
       mediaUrl,
       filename,
@@ -39,12 +42,14 @@ export class TwilioService implements MessageService {
 
     } = options
 
+    const statusCallback = statusCallbackUrl ?? this.defaultStatusCallbackUrl()
+
     const msg = await this.client.messages.create({
-      to: `whatsapp:+${to}`, // Text your number
-      from: `whatsapp:${envs.TWILIO_NUMBER}`, // From a valid Twilio number
+      to: this.toWhatsAppAddress(to),
+      from: this.resolveFromAddress(from),
       body,
       mediaUrl: [mediaUrl],
-      statusCallback: statusCallbackUrl,
+      statusCallback,
     })
 
     return {
@@ -199,16 +204,18 @@ export class TwilioService implements MessageService {
 
   async createWhatsAppMessage(options: SendWhatsAppMessageOptions): Promise<WhatsAppSendMediaResult> {
 
-    const { body, to, mediaUrl, contentSid, contentVariables } = options
+    const { body, to, from, mediaUrl, contentSid, contentVariables, statusCallbackUrl } = options
+    const resolveFrom = this.resolveFromAddress(from)
+    const statusCallback = statusCallbackUrl ?? this.defaultStatusCallbackUrl()
 
     const message = await this.client.messages.create({
       body: body,
-      to: `whatsapp:+${to}`, // Text your number
-      from: `whatsapp:${envs.TWILIO_NUMBER}`, // From a valid Twilio number
+      to: this.toWhatsAppAddress(to),
+      from: resolveFrom,
       mediaUrl: mediaUrl,
-      // forceDelivery: true,
       contentSid,
-      contentVariables
+      contentVariables,
+      statusCallback
 
     })
 
@@ -218,6 +225,40 @@ export class TwilioService implements MessageService {
 
 
 
+  }
+
+  private resolveFromAddress(from?: string): string {
+    return this.toWhatsAppAddress(from ?? envs.TWILIO_NUMBER)
+  }
+
+  private defaultStatusCallbackUrl(): string | undefined {
+    const baseUrl = `${envs.API_URL ?? ''}`.trim().replace(/\/+$/, '')
+    if (!/^https?:\/\//i.test(baseUrl)) return undefined
+
+    try {
+      const parsed = new URL(baseUrl)
+      const host = parsed.hostname.toLowerCase()
+      if (host === 'localhost' || host === '127.0.0.1') return undefined
+      return `${baseUrl}/api/whatsapp/status-callback`
+    } catch {
+      return undefined
+    }
+  }
+
+  private toWhatsAppAddress(phone: string): string {
+
+
+    const clean = `${phone ?? ''}`
+      .trim()
+      .replace(/^whatsapp:/i, '')
+      .replace(/\s+/g, '')
+
+    if (!clean) {
+      throw new Error('Missing phone number for WhatsApp address')
+    }
+
+    const normalized = clean.startsWith('+') ? clean : `+${clean}`
+    return `whatsapp:${normalized}`
   }
 
 }

@@ -19,7 +19,9 @@ export class UsersRoutes {
       getNotificationSettings,
       upsertNotificationSetting,
       sendNotificationTest,
-      sendNotificationTests
+      sendNotificationTests,
+      getInProgressReminderConfig,
+      updateInProgressReminderConfig
     } = new UsersController(usersRepository, new TwilioService())
 
     router.get('/', getAll);
@@ -27,6 +29,8 @@ export class UsersRoutes {
     router.put('/notification-settings', AuthMiddleware.validateJWT, upsertNotificationSetting);
     router.post('/notification-settings/test', AuthMiddleware.validateJWT, sendNotificationTest);
     router.post('/notification-settings/test-all', AuthMiddleware.validateJWT, sendNotificationTests);
+    router.get('/workflow-reminder-config', AuthMiddleware.validateJWT, getInProgressReminderConfig);
+    router.put('/workflow-reminder-config', AuthMiddleware.validateJWT, updateInProgressReminderConfig);
     router.put('/:id', AuthMiddleware.validateJWT, update);
 
     return router

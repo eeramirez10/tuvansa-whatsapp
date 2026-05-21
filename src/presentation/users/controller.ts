@@ -1,11 +1,14 @@
 import { Request, Response } from 'express';
 import { GetUserNotificationSettingsUseCase } from '../../application/use-cases/users/get-user-notification-settings.use-case';
+import { GetInProgressReminderConfigUseCase } from '../../application/use-cases/users/get-in-progress-reminder-config.use-case';
 import { SendUserNotificationTestUseCase } from '../../application/use-cases/users/send-user-notification-test.use-case';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user.use-case';
+import { UpdateInProgressReminderConfigUseCase } from '../../application/use-cases/users/update-in-progress-reminder-config.use-case';
 import { UpsertUserNotificationSettingUseCase } from '../../application/use-cases/users/upsert-user-notification-setting.use-case';
 import { SendAllUserNotificationTestsDto } from '../../domain/dtos/users/send-all-user-notification-tests.dto';
 import { GetUserNotificationSettingsDto } from '../../domain/dtos/users/get-user-notification-settings.dto';
 import { SendUserNotificationTestDto } from '../../domain/dtos/users/send-user-notification-test.dto';
+import { UpdateInProgressReminderConfigDto } from '../../domain/dtos/users/update-in-progress-reminder-config.dto';
 import { UpdateUserDto } from '../../domain/dtos/users/update-user.dto';
 import { UpsertUserNotificationSettingDto } from '../../domain/dtos/users/upsert-user-notification-setting.dto';
 import { UserRepository } from '../../domain/repositories/user-repository';
@@ -172,6 +175,52 @@ export class UsersController {
       })
       .catch((e) => {
         console.log(e, 'Users Controller sendNotificationTests')
+        res.status(500).json({
+          error: 'error internal server'
+        })
+      })
+  }
+
+  getInProgressReminderConfig = (req: Request, res: Response) => {
+    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    if (requestUserRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+
+    new GetInProgressReminderConfigUseCase(this.userRepository)
+      .execute()
+      .then((enabled) => {
+        return res.status(200).json({ enabled })
+      })
+      .catch((e) => {
+        console.log(e, 'Users Controller getInProgressReminderConfig')
+        res.status(500).json({
+          error: 'error internal server'
+        })
+      })
+  }
+
+  updateInProgressReminderConfig = (req: Request, res: Response) => {
+    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    if (requestUserRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+
+    const [error, dto] = UpdateInProgressReminderConfigDto.execute({
+      ...req.body
+    })
+
+    if (error || !dto) {
+      return res.status(400).json({ error: error ?? 'Payload inválido' })
+    }
+
+    new UpdateInProgressReminderConfigUseCase(this.userRepository)
+      .execute(dto)
+      .then((enabled) => {
+        return res.status(200).json({ enabled })
+      })
+      .catch((e) => {
+        console.log(e, 'Users Controller updateInProgressReminderConfig')
         res.status(500).json({
           error: 'error internal server'
         })

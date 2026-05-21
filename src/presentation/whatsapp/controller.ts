@@ -34,6 +34,7 @@ import { InternalEmployeeResponseDto, UserRole } from "../../domain/dtos/users/i
 import { DispatchQuoteNotificationsUseCase } from "../../application/use-cases/whatsApp/dispatch-quote-notifications.use-case";
 import { QuoteNotificationEvent } from "../../domain/enums/notification.enum";
 import { SendInProgressQuoteRemindersUseCase } from "../../application/use-cases/whatsApp/send-in-progress-quote-reminders.use-case";
+import { GetInProgressReminderConfigUseCase } from "../../application/use-cases/users/get-in-progress-reminder-config.use-case";
 interface SendMessageRequest extends Request {
   body: SendMessageRequestDTO
 }
@@ -64,7 +65,7 @@ export class WhatsAppController {
     private fileRepository: FileRepository,
     private branchRepository: BranchRepository,
     private messageRepository: MessageRepository,
-    private userRepository:UserRepository
+    private userRepository: UserRepository
 
   ) {
 
@@ -73,33 +74,55 @@ export class WhatsAppController {
 
   async webhookIncomingMessages(req: Request, res: Response) {
 
-    const payload = req.body
+    const payload = {
+      ...(req.query as Record<string, unknown>),
+      ...(req.body as Record<string, unknown>)
+    }
 
-    const {
-      MediaContentType0,
-      MessageType,
-      WaId,
-      Body,
-      MediaUrl0,
-    } = payload;
+    console.log(payload)
 
+    const MediaContentType0 = typeof payload.MediaContentType0 === 'string'
+      ? payload.MediaContentType0
+      : ''
+    const Body = typeof payload.Body === 'string'
+      ? payload.Body
+      : ''
+    const MediaUrl0 = typeof payload.MediaUrl0 === 'string'
+      ? payload.MediaUrl0
+      : ''
+    const rawMessageType = typeof payload.MessageType === 'string'
+      ? payload.MessageType.toLowerCase()
+      : ''
+    const numMedia = this.parseNumMedia(payload.NumMedia)
+    const WaId = this.resolveIncomingWaId(payload)
 
+    if (!WaId) {
+      console.warn('[WhatsAppController] Incoming webhook without WaId/From')
+      return this.respondTwilioWebhook(res)
+    }
+
+    const messageType = this.resolveIncomingMessageType({
+      rawMessageType,
+      numMedia,
+      mediaUrl: MediaUrl0,
+      body: Body
+    })
 
     try {
       const internalUser = await new FindInternalEmployeeByWaIdUseCase(this.userRepository).execute(WaId)
 
-      if (internalUser && await this.shouldRouteToInternalWorkflow({...internalUser }, MessageType, Body, payload)) {
+      if (internalUser && await this.shouldRouteToInternalWorkflow({ ...internalUser }, messageType, Body, payload)) {
         await this.handleInternalEmployeeMessage({
           internalUser,
           waId: WaId,
           body: Body,
-          messageType: MessageType,
+          messageType,
           payload
         })
-        return res.status(202).send('Accepted')
+        return this.respondTwilioWebhook(res)
       }
 
-      if (MessageType === 'text') {
+      if (messageType === 'text') {
 
         const { chatThread } = await
           new EnsureChatThreadForPhoneUseCase(
@@ -194,7 +217,7 @@ export class WhatsAppController {
             })
 
             this.scheduleProcessing(WaId)
-            return res.status(202).send('Accepted')
+            return this.respondTwilioWebhook(res)
           }
 
           if (this.isNegativeReplacement(normalizedBody)) {
@@ -211,7 +234,7 @@ export class WhatsAppController {
               to: WaId
             })
 
-            return res.status(202).send('Accepted')
+            return this.respondTwilioWebhook(res)
           }
 
           const pendingName = this.resolveDisplayFilename(
@@ -229,7 +252,7 @@ export class WhatsAppController {
             to: WaId
           })
 
-          return res.status(202).send('Accepted')
+          return this.respondTwilioWebhook(res)
         }
 
         await prisma.pendingMessage.create({
@@ -241,11 +264,11 @@ export class WhatsAppController {
 
         this.scheduleProcessing(WaId)
 
-        return res.status(202).send('Accepted')
+        return this.respondTwilioWebhook(res)
 
       }
 
-      if (MessageType === 'document') {
+      if (messageType === 'document') {
 
         if (!ACCEPTED_FORMATS.includes(MediaContentType0)) {
 
@@ -254,7 +277,7 @@ export class WhatsAppController {
             to: WaId
           })
 
-          return res.status(415).send('Unsupported Media Type')
+          return this.respondTwilioWebhook(res)
 
         }
 
@@ -299,7 +322,7 @@ export class WhatsAppController {
 
         if (activePendingFile?.fileKey === filename) {
           console.log('[WhatsAppController] Duplicate file webhook ignored:', filename);
-          return res.status(202).send('Accepted')
+          return this.respondTwilioWebhook(res)
         }
 
         if (activePendingFile) {
@@ -339,7 +362,7 @@ export class WhatsAppController {
 
             if (existingCandidate?.fileKey === filename) {
               console.log('[WhatsAppController] Duplicate replacement candidate ignored:', filename);
-              return res.status(202).send('Accepted')
+              return this.respondTwilioWebhook(res)
             }
 
             if (existingCandidate?.id && existingCandidate.fileKey) {
@@ -386,7 +409,7 @@ export class WhatsAppController {
               to: WaId
             })
 
-            return res.status(202).send('Accepted')
+            return this.respondTwilioWebhook(res)
           }
         }
 
@@ -412,23 +435,100 @@ export class WhatsAppController {
 
         this.scheduleProcessing(WaId)
 
-        return res.status(202).send('Accepted')
+        return this.respondTwilioWebhook(res)
 
       }
 
 
+      return this.respondTwilioWebhook(res)
 
     } catch (error) {
       console.log(error)
 
-      res
-        .status(500)
-        .json({
-          error: 'Ocurrio un error'
-        })
+      return this.respondTwilioWebhook(res)
     }
 
 
+  }
+
+  async webhookStatusCallback(req: Request, res: Response) {
+    const payload = {
+      ...(req.query as Record<string, unknown>),
+      ...(req.body as Record<string, unknown>)
+    }
+
+    const messageSid = `${payload.MessageSid ?? ''}`.trim()
+    const messageStatus = `${payload.MessageStatus ?? ''}`.trim().toUpperCase()
+    const errorCode = payload.ErrorCode != null ? `${payload.ErrorCode}`.trim() : null
+    const errorMessage = payload.ErrorMessage != null ? `${payload.ErrorMessage}`.trim() : null
+    const to = `${payload.To ?? ''}`.trim()
+    const from = `${payload.From ?? ''}`.trim()
+
+    console.log('[TwilioStatusCallback]', {
+      messageSid,
+      messageStatus,
+      errorCode,
+      errorMessage,
+      to,
+      from
+    })
+
+    if (messageSid && messageStatus) {
+      try {
+        await this.messageRepository.updateStatusByProviderSid(
+          messageSid,
+          messageStatus,
+          { errorCode, errorMessage }
+        )
+      } catch (error: any) {
+        console.warn('[TwilioStatusCallback] could not update message status', {
+          messageSid,
+          reason: error?.message ?? 'unknown'
+        })
+      }
+    }
+
+    return res.status(200).type('text/plain').send('OK')
+  }
+
+  private respondTwilioWebhook(res: Response): Response {
+    return res
+      .status(200)
+      .type('text/plain')
+      .send('OK')
+  }
+
+  private parseNumMedia(value: unknown): number {
+    const parsed = Number.parseInt(`${value ?? '0'}`, 10)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  }
+
+  private resolveIncomingWaId(payload: Record<string, unknown>): string | null {
+    const waId = typeof payload.WaId === 'string' ? payload.WaId.trim() : ''
+    if (waId) return waId
+
+    const from = typeof payload.From === 'string' ? payload.From.trim() : ''
+    if (!from) return null
+
+    const normalized = from.replace(/^whatsapp:/i, '').replace(/^\+/, '').trim()
+    return normalized || null
+  }
+
+  private resolveIncomingMessageType(options: {
+    rawMessageType: string
+    numMedia: number
+    mediaUrl: string
+    body: string
+  }): 'text' | 'document' {
+    const { rawMessageType, numMedia, mediaUrl, body } = options
+
+    if (rawMessageType === 'text') return 'text'
+    if (rawMessageType === 'document') return 'document'
+
+    if (numMedia > 0 || !!mediaUrl) return 'document'
+    if (body.trim().length > 0) return 'text'
+
+    return 'text'
   }
 
   async sendEmail(req: Request, res: Response) {
@@ -454,23 +554,42 @@ export class WhatsAppController {
   }
 
 
-  SendWhatsApp(req: SendMessageRequest, res: Response) {
+  async SendWhatsApp(req: SendMessageRequest, res: Response) {
     const [error, sendMessageRequestDTO] = SendMessageRequestDTO.execute({ ...req.body })
     if (error) {
       res.status(401).json({ error })
       return
     }
 
-    this.messageService
-      .createWhatsAppMessage({
+    try {
+      const resp = await this.messageService
+        .createWhatsAppMessage({
         body: sendMessageRequestDTO.message,
-        to: sendMessageRequestDTO.to
+        to: sendMessageRequestDTO.to,
+        from: sendMessageRequestDTO.from,
+        statusCallbackUrl: sendMessageRequestDTO.statusCallbackUrl
       })
-      .then((resp) => {
-        res.json(resp)
-      }).catch((error) => {
-        console.log(error)
+
+      res.json({
+        ok: true,
+        ...resp
       })
+
+    } catch (error: any) {
+      console.error('[SendWhatsApp] Twilio error:', error)
+
+      res.status(502).json({
+        ok: false,
+        error: 'Twilio send failed',
+        provider: 'twilio',
+        details: {
+          code: error?.code ?? null,
+          status: error?.status ?? null,
+          message: error?.message ?? 'Unknown Twilio error',
+          moreInfo: error?.moreInfo ?? null
+        }
+      })
+    }
 
 
   }
@@ -663,17 +782,20 @@ export class WhatsAppController {
         internalUser.id
       )
       await this.dispatchWorkflowNotification(QuoteNotificationEvent.QUOTE_IN_PROGRESS, quote, internalUser)
-      try {
-        await new SendInProgressQuoteRemindersUseCase(
-          this.quoteRepository,
-          this.userRepository,
-          this.messageService
-        ).executeImmediateForQuote({
-          quoteId: quote.id,
-          ownerUserId: internalUser.id
-        })
-      } catch (error) {
-        console.warn(`[WhatsAppController] No se pudo enviar recordatorio inmediato COT-${quote.quoteNumber}`)
+      const reminderEnabled = await new GetInProgressReminderConfigUseCase(this.userRepository).execute()
+      if (reminderEnabled) {
+        try {
+          await new SendInProgressQuoteRemindersUseCase(
+            this.quoteRepository,
+            this.userRepository,
+            this.messageService
+          ).executeImmediateForQuote({
+            quoteId: quote.id,
+            ownerUserId: internalUser.id
+          })
+        } catch (error) {
+          console.warn(`[WhatsAppController] No se pudo enviar recordatorio inmediato COT-${quote.quoteNumber}`)
+        }
       }
 
       await this.sendInternalReply(

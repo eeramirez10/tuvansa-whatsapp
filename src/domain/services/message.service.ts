@@ -1,9 +1,11 @@
 interface SendWhatsAppMessageOptions {
   body?: string
   to: string
+  from?: string
   mediaUrl?: string[]
   contentSid?: string
   contentVariables?: string
+  statusCallbackUrl?: string
 }
 
 export interface SaveFilesDto {
