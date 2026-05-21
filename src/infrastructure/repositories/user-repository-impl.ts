@@ -17,6 +17,14 @@ export class UserRepositoryImpl implements UserRepository {
     return this.userDatasource.update(updateUserDto)
   }
 
+  getInProgressReminderConfig(): Promise<boolean> {
+    return this.userDatasource.getInProgressReminderConfig()
+  }
+
+  updateInProgressReminderConfig(enabled: boolean): Promise<boolean> {
+    return this.userDatasource.updateInProgressReminderConfig(enabled)
+  }
+
   getNotificationRecipients(options: {
     event: QuoteNotificationEvent;
     channel?: NotificationChannel;

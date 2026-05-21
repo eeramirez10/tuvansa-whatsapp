@@ -1,4 +1,5 @@
 // src/infrastructure/pdf/renderer/render-quote-html.ts
+import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -12,7 +13,7 @@ export function renderQuoteHTML(
   cssPath = resolve(__dirname, '../pdf/print.css')
 ): string {
   const css = readFileSync(cssPath, 'utf8');
-  const appHtml = renderToString(<QuotePrintApp {...props} />);
+  const appHtml = renderToString(createElement(QuotePrintApp, props));
 
   return `<!doctype html>
 <html lang="es">

@@ -25,9 +25,43 @@ import {
 
 
 const prisma = new PrismaClient()
+const inProgressManagerNotificationSettingKey = 'IN_PROGRESS_MANAGER_NOTIFICATION_ENABLED'
 
 export class UserPostgresqlDatasource implements UserDatasource {
 
+  async getInProgressReminderConfig(): Promise<boolean> {
+    const setting = await prisma.systemSetting.findUnique({
+      where: {
+        key: inProgressManagerNotificationSettingKey
+      },
+      select: {
+        valueBoolean: true
+      }
+    })
+
+    if (!setting) return true
+    return Boolean(setting.valueBoolean)
+  }
+
+  async updateInProgressReminderConfig(enabled: boolean): Promise<boolean> {
+    const setting = await prisma.systemSetting.upsert({
+      where: {
+        key: inProgressManagerNotificationSettingKey
+      },
+      update: {
+        valueBoolean: enabled
+      },
+      create: {
+        key: inProgressManagerNotificationSettingKey,
+        valueBoolean: enabled
+      },
+      select: {
+        valueBoolean: true
+      }
+    })
+
+    return Boolean(setting.valueBoolean)
+  }
 
   async findByWaID(waId: string): Promise<InternalEmployeeResponseDto | null> {
 

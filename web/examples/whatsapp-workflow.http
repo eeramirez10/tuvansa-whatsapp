@@ -1,5 +1,5 @@
-@baseUrl = http://localhost:3000/api
-@managerWaId = 5210000000000
+@baseUrl = https://gnomologic-zita-unarduously.ngrok-free.dev/api
+@managerWaId = 525541142762
 @quoteNumber = 12345
 
 ### 1) Simular click en template reminder: WF:QUOTED:<folio>

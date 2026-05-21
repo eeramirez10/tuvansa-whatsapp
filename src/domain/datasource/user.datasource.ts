@@ -29,4 +29,8 @@ export abstract class UserDatasource {
     channel?: NotificationChannel
     quoteBranchId?: string | null
   }): Promise<NotificationRecipientDto[]>
+
+  abstract getInProgressReminderConfig(): Promise<boolean>
+
+  abstract updateInProgressReminderConfig(enabled: boolean): Promise<boolean>
 }

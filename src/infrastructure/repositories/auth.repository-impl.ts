@@ -5,7 +5,8 @@ import { LoginUserDto } from "../../domain/dtos/auth/login-user.dto";
 import { AuthRepository } from "../../domain/repositories/auth.repository";
 
 import { PaginationResult } from "../../domain/entities/pagination-result";
-import { UserEntity } from "../../domain/entities/user.entity";
+import { UserEntity } from "../../domain/entities/user.entity.entity";
+
 
 export class AuthRepositoryImpl implements AuthRepository {
 

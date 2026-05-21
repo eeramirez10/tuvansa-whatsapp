@@ -58,6 +58,9 @@ export class WhatsAppRoutes {
     )
 
     router.post('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))
+    router.get('/incoming-messages', whastAppController.webhookIncomingMessages.bind(whastAppController))
+    router.post('/status-callback', whastAppController.webhookStatusCallback.bind(whastAppController))
+    router.get('/status-callback', whastAppController.webhookStatusCallback.bind(whastAppController))
 
     router.post('/send-email', whastAppController.sendEmail.bind(whastAppController))
     router.post('/send-message', whastAppController.SendWhatsApp.bind(whastAppController))

@@ -4,8 +4,9 @@ import { computeLineTotal, D, sum, toStr } from "../utils/decimals";
 import { QuoteVersionItemEntity } from '../../domain/entities/quote-version-item.entity';
 import { PrismaClient, VersionStatus } from "@prisma/client";
 
-import { QuoteVersionMapper } from "../mappers/quote-version/quote-version.mapper";
+
 import { QuoteVersionItemMapper } from '../mappers/quote-version/quote-version-item.mapper';
+import { QuoteVersionMapper } from "../mappers/quote-version/quote-version.mapper.mapper";
 
 
 const prismaClient = new PrismaClient()

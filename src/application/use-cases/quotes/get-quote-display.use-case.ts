@@ -1,8 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { DisplayQuery, DisplayResult, ResolutionReason } from "../../../domain/dtos/quotes/display.dto";
 import { FileStorageService } from "../../../domain/services/file-storage.service";
-import { UserEntity } from "../../../domain/entities/user.entity";
+
 import { QuoteArtifactEntity } from "../../../domain/entities/quote-artifact.entity";
+import { UserEntity } from "../../../domain/entities/user.entity.entity";
 
 
 export class GetQuoteDisplayUseCase {

@@ -16,6 +16,7 @@ import { SaveQuoteDraftUseCase } from '../../application/use-cases/quote-version
 import { ProcessQuoteFileExtractionUseCase } from '../../application/use-cases/quotes/process-quote-file-extraction.use-case';
 import { SaveQuoteExtractionResultUseCase } from '../../application/use-cases/quotes/save-quote-extraction-result.use-case';
 import { DeleteQuoteUseCase } from '../../application/use-cases/quotes/delete-quote.use-case';
+import { GetInProgressReminderConfigUseCase } from '../../application/use-cases/users/get-in-progress-reminder-config.use-case';
 import { SendInProgressQuoteRemindersUseCase } from '../../application/use-cases/whatsApp/send-in-progress-quote-reminders.use-case';
 
 import { PrismaClient, UserRole } from '@prisma/client';
@@ -161,17 +162,20 @@ export class QuotesController {
         .execute(quoteId, dto, actorId)
 
       if (dto.workflowStatus === 'IN_PROGRESS' && user?.id) {
-        try {
-          await new SendInProgressQuoteRemindersUseCase(
-            this.quoteRepository,
-            this.userRepository,
-            this.messageService
-          ).executeImmediateForQuote({
-            quoteId,
-            ownerUserId: user.id
-          })
-        } catch (error) {
-          console.warn(`[QuotesController] No se pudo enviar recordatorio inmediato COT-${updated.quoteNumber}`)
+        const reminderEnabled = await new GetInProgressReminderConfigUseCase(this.userRepository).execute()
+        if (reminderEnabled) {
+          try {
+            await new SendInProgressQuoteRemindersUseCase(
+              this.quoteRepository,
+              this.userRepository,
+              this.messageService
+            ).executeImmediateForQuote({
+              quoteId,
+              ownerUserId: user.id
+            })
+          } catch (error) {
+            console.warn(`[QuotesController] No se pudo enviar recordatorio inmediato COT-${updated.quoteNumber}`)
+          }
         }
       }
 

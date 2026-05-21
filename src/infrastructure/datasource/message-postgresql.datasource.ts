@@ -51,10 +51,42 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
   }
 
   markSent(id: string, providerMessageSid: string): Promise<MessageEntity> {
-    throw new Error("Method not implemented.");
+    return prismaClient.message.update({
+      where: { id },
+      data: {
+        provider: 'TWILIO',
+        providerMessageId: providerMessageSid,
+        status: 'SENT',
+        errorCode: null
+      }
+    }) as unknown as Promise<MessageEntity>
   }
   updateStatusByProviderSid(providerMessageSid: string, status: string, extra?: any): Promise<MessageEntity> {
-    throw new Error("Method not implemented.");
+    return (async () => {
+      const found = await prismaClient.message.findFirst({
+        where: { providerMessageId: providerMessageSid },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      if (!found?.id) {
+        throw new Error(`Message not found for provider sid: ${providerMessageSid}`)
+      }
+
+      const normalizedStatus = `${status ?? 'UNKNOWN'}`.trim().toUpperCase()
+      const normalizedErrorCode = extra?.errorCode != null
+        ? `${extra.errorCode}`
+        : null
+
+      const updated = await prismaClient.message.update({
+        where: { id: found.id },
+        data: {
+          status: normalizedStatus,
+          errorCode: normalizedErrorCode
+        }
+      })
+
+      return updated as unknown as MessageEntity
+    })()
   }
 
 
@@ -78,7 +110,7 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
 
   async createAssistantMessage(request: CreateAssistantMessageRequest): Promise<void> {
 
-    const { content, chatThreadId, to } = request
+    const { content, chatThreadId, to, providerMessageId, status, errorCode } = request
 
     await prismaClient.message.create({
       data: {
@@ -87,7 +119,11 @@ export class MessagePostgresqlDatasource implements MessageDatasource {
         chatThreadId,
         channel: 'WHATSAPP',
         direction: 'OUTBOUND',
-        to
+        to,
+        provider: 'TWILIO',
+        providerMessageId: providerMessageId ?? null,
+        status: status ?? null,
+        errorCode: errorCode ?? null
       }
     })
   }

@@ -87,3 +87,16 @@ Content-Type: application/json
   "enabledOnly": true,
   "channel": "WHATSAPP"
 }
+
+### Get workflow reminder config (admin)
+GET {{baseUrl}}/api/users/workflow-reminder-config
+Authorization: Bearer {{token}}
+
+### Update workflow reminder config (admin)
+PUT {{baseUrl}}/api/users/workflow-reminder-config
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "enabled": true
+}
