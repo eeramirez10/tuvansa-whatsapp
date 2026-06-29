@@ -1,3 +1,4 @@
+import { DeleteUserNotificationSettingDto } from "../dtos/users/delete-user-notification-setting.dto";
 import { GetUserNotificationSettingsDto } from "../dtos/users/get-user-notification-settings.dto";
 import { InternalEmployeeResponseDto } from "../dtos/users/internal-employee-response.dto";
 import { NotificationRecipientDto } from "../dtos/users/notification-recipient.dto";
@@ -23,6 +24,10 @@ export abstract class UserRepository {
   abstract upsertNotificationSetting(
     upsertUserNotificationSettingDto: UpsertUserNotificationSettingDto
   ): Promise<UserNotificationSettingResponseDto>
+
+  abstract deleteNotificationSetting(
+    deleteUserNotificationSettingDto: DeleteUserNotificationSettingDto
+  ): Promise<void>
 
   abstract getNotificationRecipients(options: {
     event: QuoteNotificationEvent

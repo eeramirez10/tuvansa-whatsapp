@@ -1,6 +1,7 @@
 import { UserDatasource } from "../../domain/datasource/user.datasource";
 import { BranchUserResponse } from "../../domain/dtos/users/branch-user-response.dto";
 import { InternalEmployeeResponseDto, UserRole } from "../../domain/dtos/users/internal-employee-response.dto";
+import { DeleteUserNotificationSettingDto } from "../../domain/dtos/users/delete-user-notification-setting.dto";
 import { GetUserNotificationSettingsDto } from "../../domain/dtos/users/get-user-notification-settings.dto";
 import { NotificationRecipientDto } from "../../domain/dtos/users/notification-recipient.dto";
 import { UpsertUserNotificationSettingDto } from "../../domain/dtos/users/upsert-user-notification-setting.dto";
@@ -309,6 +310,23 @@ export class UserPostgresqlDatasource implements UserDatasource {
         email: setting.user.email
       }
     }))
+  }
+
+  async deleteNotificationSetting(
+    deleteUserNotificationSettingDto: DeleteUserNotificationSettingDto
+  ): Promise<void> {
+    const setting = await prisma.userNotificationSetting.findUnique({
+      where: { id: deleteUserNotificationSettingDto.settingId },
+      select: { id: true }
+    })
+
+    if (!setting) {
+      throw new Error('Configuración de notificación no encontrada')
+    }
+
+    await prisma.userNotificationSetting.delete({
+      where: { id: deleteUserNotificationSettingDto.settingId }
+    })
   }
 
   async upsertNotificationSetting(

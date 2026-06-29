@@ -2,15 +2,16 @@
   "name": "github-webhooks",
   "version": "1.0.0",
   "main": "index.js",
+  "packageManager": "pnpm@11.5.3",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/app.ts",
     "build": "rm -rf ./dist && tsc -p tsconfig.node.json",
-    "start": "NODE_ENV=production npm run build && NODE_ENV=production node dist/app.js",
+    "start": "NODE_ENV=production pnpm run build && NODE_ENV=production node dist/app.js",
     "test": "node --test --import tsx \"tests/**/*.test.ts\"",
     "twilio:watch:undelivered": "NODE_ENV=development tsx src/dev/twilio-watch-undelivered.ts",
     "prisma:migrate:dev": "set -a; . ./.env.development; set +a; prisma migrate dev",
     "prisma:generate:dev": "set -a; . ./.env.development; set +a; prisma generate",
-    "prisma:migrate:reset:dev":"set -a; . ./.env.development; set +a; prisma migrate reset --force --skip-seed"
+    "prisma:migrate:reset:dev": "set -a; . ./.env.development; set +a; prisma migrate reset --force --skip-seed"
   },
   "keywords": [],
   "author": "",

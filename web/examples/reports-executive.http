@@ -1,0 +1,33 @@
+@baseUrl = http://localhost:3000/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzOTkwYzY1LTcyZDQtNDIxMC1hODRhLWM1MTQ4NzliMDRjOCIsImlhdCI6MTc3OTQwNTg4NiwiZXhwIjoxNzc5NDM0Njg2fQ.y3VfhJrUubRaUeHgOIjmVgWmIpz7p8NgKwrG7gKadAQ
+@year = 2026
+@branchId = f63ce7d4-84ca-425a-9fcf-f5ad773c8f46
+
+### Login (opcional para obtener token)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@tuvansa.com",
+  "password": "password"
+}
+
+### Reporte ejecutivo imprimible - anual (todas las sucursales permitidas)
+GET {{baseUrl}}/reports/quotes/executive-printable?year={{year}}
+Authorization: Bearer {{token}}
+
+### Reporte ejecutivo imprimible - filtrado por sucursal
+GET {{baseUrl}}/reports/quotes/executive-printable?year={{year}}&branchId={{branchId}}
+Authorization: Bearer {{token}}
+
+### Reporte ejecutivo imprimible - año actual (si omites year)
+GET {{baseUrl}}/reports/quotes/executive-printable
+Authorization: Bearer {{token}}
+
+### Reporte por sucursal (referencia)
+GET {{baseUrl}}/reports/quotes/by-branch?startDate=01-01-2026&endDate=31-12-2026
+Authorization: Bearer {{token}}
+
+### Reporte por sucursal y estado (referencia)
+GET {{baseUrl}}/reports/quotes/by-branch-status?startDate=01-01-2026&endDate=31-12-2026
+Authorization: Bearer {{token}}

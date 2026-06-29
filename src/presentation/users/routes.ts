@@ -17,6 +17,7 @@ export class UsersRoutes {
       getAll,
       update,
       getNotificationSettings,
+      deleteNotificationSetting,
       upsertNotificationSetting,
       sendNotificationTest,
       sendNotificationTests,
@@ -26,6 +27,7 @@ export class UsersRoutes {
 
     router.get('/', getAll);
     router.get('/notification-settings', AuthMiddleware.validateJWT, getNotificationSettings);
+    router.delete('/notification-settings/:settingId', AuthMiddleware.validateJWT, deleteNotificationSetting);
     router.put('/notification-settings', AuthMiddleware.validateJWT, upsertNotificationSetting);
     router.post('/notification-settings/test', AuthMiddleware.validateJWT, sendNotificationTest);
     router.post('/notification-settings/test-all', AuthMiddleware.validateJWT, sendNotificationTests);
