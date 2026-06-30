@@ -2,7 +2,8 @@ import { CheckFieldDto } from "../dtos/auth/check-field.dto";
 import { CreateUserDto } from "../dtos/auth/create-user.dto";
 import { LoginUserDto } from "../dtos/auth/login-user.dto";
 import { PaginationResult } from "../entities/pagination-result";
-import { UserEntity } from "../entities/user.entity";
+import { UserEntity } from "../entities/user.entity.entity";
+
 
 
 

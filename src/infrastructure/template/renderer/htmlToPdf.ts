@@ -29,7 +29,7 @@ export async function htmlToPdf(
     await page.emulateMediaType('print');
 
     await page.setContent(html, {
-      waitUntil: 'networkidle0',
+      waitUntil: 'load',
       timeout: opts.timeoutMs ?? 30000,
     });
 

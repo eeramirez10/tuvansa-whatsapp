@@ -14,7 +14,7 @@ export class QuoteVersionsController {
   getDraftByQuote = async (req: Request, res: Response) => {
 
     try {
-      const quoteId = req.params.quoteId;
+      const quoteId = req.params.quoteId as string;
 
       if (!quoteId) {
         res.status(400).json({
@@ -52,7 +52,7 @@ export class QuoteVersionsController {
 
   concluideQuoteVersion = async (req: Request, res: Response) => {
 
-    const quoteVersionId = req.params.id;
+    const quoteVersionId = req.params.id as string
     if (!quoteVersionId) {
       res.status(400).json({ ok: false, error: 'Missing quoteVersionId' });
       return

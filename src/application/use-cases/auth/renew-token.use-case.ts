@@ -1,5 +1,6 @@
 import { JwtAdapter } from "../../../config/jwt";
-import { UserEntity } from "../../../domain/entities/user.entity";
+import { UserEntity } from "../../../domain/entities/user.entity.entity";
+
 
 
 import { CustomError } from "../../../domain/errors/custom-error";
