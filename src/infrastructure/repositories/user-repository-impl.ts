@@ -1,3 +1,4 @@
+import { DeleteUserNotificationSettingDto } from "../../domain/dtos/users/delete-user-notification-setting.dto";
 import { GetUserNotificationSettingsDto } from "../../domain/dtos/users/get-user-notification-settings.dto";
 import { UsersResponseDTO } from "../../domain/dtos/users/users-response.dto";
 import { UserRepository } from "../../domain/repositories/user-repository";
@@ -43,6 +44,12 @@ export class UserRepositoryImpl implements UserRepository {
     upsertUserNotificationSettingDto: UpsertUserNotificationSettingDto
   ): Promise<UserNotificationSettingResponseDto> {
     return this.userDatasource.upsertNotificationSetting(upsertUserNotificationSettingDto)
+  }
+
+  deleteNotificationSetting(
+    deleteUserNotificationSettingDto: DeleteUserNotificationSettingDto
+  ): Promise<void> {
+    return this.userDatasource.deleteNotificationSetting(deleteUserNotificationSettingDto)
   }
 
   findByWaID(waId: string): Promise<InternalEmployeeResponseDto | null> {

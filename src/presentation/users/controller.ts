@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
+import { DeleteUserNotificationSettingUseCase } from '../../application/use-cases/users/delete-user-notification-setting.use-case';
 import { GetUserNotificationSettingsUseCase } from '../../application/use-cases/users/get-user-notification-settings.use-case';
 import { GetInProgressReminderConfigUseCase } from '../../application/use-cases/users/get-in-progress-reminder-config.use-case';
 import { SendUserNotificationTestUseCase } from '../../application/use-cases/users/send-user-notification-test.use-case';
 import { UpdateUserUseCase } from '../../application/use-cases/users/update-user.use-case';
 import { UpdateInProgressReminderConfigUseCase } from '../../application/use-cases/users/update-in-progress-reminder-config.use-case';
 import { UpsertUserNotificationSettingUseCase } from '../../application/use-cases/users/upsert-user-notification-setting.use-case';
+import { DeleteUserNotificationSettingDto } from '../../domain/dtos/users/delete-user-notification-setting.dto';
 import { SendAllUserNotificationTestsDto } from '../../domain/dtos/users/send-all-user-notification-tests.dto';
 import { GetUserNotificationSettingsDto } from '../../domain/dtos/users/get-user-notification-settings.dto';
 import { SendUserNotificationTestDto } from '../../domain/dtos/users/send-user-notification-test.dto';
@@ -96,6 +98,35 @@ export class UsersController {
         console.log(e, 'Users Controller getNotificationSettings')
         res.status(500).json({
           error: 'error internal server'
+        })
+      })
+  }
+
+  deleteNotificationSetting = (req: Request, res: Response) => {
+    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    if (requestUserRole !== 'ADMIN') {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+
+    const [error, dto] = DeleteUserNotificationSettingDto.execute({
+      settingId: req.params.settingId
+    })
+
+    if (error || !dto) {
+      return res.status(400).json({ error: error ?? 'Payload inválido' })
+    }
+
+    new DeleteUserNotificationSettingUseCase(this.userRepository)
+      .execute(dto)
+      .then(() => {
+        return res.status(200).json({ ok: true })
+      })
+      .catch((e) => {
+        console.log(e, 'Users Controller deleteNotificationSetting')
+        const message = `${e?.message ?? ''}` || 'error internal server'
+        const statusCode = message === 'Configuración de notificación no encontrada' ? 404 : 500
+        res.status(statusCode).json({
+          error: message
         })
       })
   }
