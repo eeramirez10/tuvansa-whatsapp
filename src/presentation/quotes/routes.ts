@@ -11,6 +11,7 @@ import { S3FileStorageService } from "../../infrastructure/services/s3-file-stor
 import { QuoteVersionPostgresqlDatasource } from "../../infrastructure/datasource/quote-version-postgresql.datasource.dto";
 import { QuoteExtractionJobsService } from "../../infrastructure/services/quote-extraction-jobs.service";
 import { UserPostgresqlDatasource } from "../../infrastructure/datasource/user-postgresql.datasource";
+import { EmailService } from "../../infrastructure/services/mail.service";
 import { UserRepositoryImpl } from "../../infrastructure/repositories/user-repository-impl";
 import { TwilioService } from "../../infrastructure/services/twilio.service";
 
@@ -37,7 +38,8 @@ export class QuotesRoutes {
       new S3FileStorageService(),
       new QuoteExtractionJobsService(),
       userRepository,
-      new TwilioService()
+      new TwilioService(),
+      new EmailService()
     )
 
     router.get('/', AuthMiddleware.validateJWT, constroller.getQuotes)
@@ -46,6 +48,7 @@ export class QuotesRoutes {
     router.get('/:id/attachment-file', AuthMiddleware.validateJWT, constroller.getQuoteAttachmentFile)
     router.put('/item/:id', constroller.updateQuote)
     router.patch('/:id/workflow-status', AuthMiddleware.validateJWT, constroller.updateQuoteWorkflowStatus)
+    router.patch('/:id/assign-seller', AuthMiddleware.validateJWT, constroller.assignSeller)
     router.post('/:id/process-file', AuthMiddleware.validateJWT, constroller.processQuoteFile)
     router.post('/:id/extraction-result', AuthMiddleware.validateJWT, constroller.saveQuoteExtractionResult)
 

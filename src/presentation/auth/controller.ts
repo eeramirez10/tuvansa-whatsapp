@@ -8,6 +8,7 @@ import { RegisterUserUseCase } from '../../application/use-cases/auth/register-u
 import { RenewTokenUseCase } from '../../application/use-cases/auth/renew-token.use-case';
 import { CheckFieldDto } from '../../domain/dtos/auth/check-field.dto';
 import { CheckFieldUseCase } from '../../application/use-cases/auth/check-field.use-case';
+import { UserRole } from '@prisma/client';
 
 
 export class AuthController {
@@ -25,6 +26,19 @@ export class AuthController {
     return res.status(500).json({ error: 'unknown error' });
   }
 
+  private getUserBranchIds(user: any): string[] {
+    const values = [
+      `${user?.branchId ?? ''}`.trim(),
+      ...(Array.isArray(user?.branchIds) ? user.branchIds.map((branchId: unknown) => `${branchId ?? ''}`.trim()) : []),
+      ...(Array.isArray(user?.branchAssignments) ? user.branchAssignments.map((item: any) => `${item?.branchId ?? ''}`.trim()) : [])
+    ].filter(Boolean)
+
+    return [...new Set(values)]
+  }
+
+  private canCreateUsers(user: any): boolean {
+    return user?.role === UserRole.ADMIN || user?.role === UserRole.SALES_COORDINATOR
+  }
 
   loginUser = (req: Request, res: Response, next: NextFunction) => {
 
@@ -49,16 +63,37 @@ export class AuthController {
   }
 
   registerUser = (req: Request, res: Response) => {
+    const currentUser = req.body.user
 
-    // console.log(req.body)
+    if (!this.canCreateUsers(currentUser)) {
+      res.status(403).json({ error: 'No tienes permiso para crear usuarios' })
+      return
+    }
 
     const [error, createUserDto] = CreateUserDto.execute(req.body)
 
-
-
-    if (error) {
+    if (error || !createUserDto) {
       res.status(400).json({ error });
       return
+    }
+
+    if (currentUser?.role === UserRole.SALES_COORDINATOR) {
+      const allowedBranchIds = this.getUserBranchIds(currentUser)
+      if (allowedBranchIds.length === 0) {
+        res.status(403).json({ error: 'Tu usuario no tiene sucursales asignadas para crear usuarios' })
+        return
+      }
+
+      const hasForbiddenBranch = createUserDto.branchIds.some((branchId) => !allowedBranchIds.includes(branchId))
+      if (hasForbiddenBranch) {
+        res.status(403).json({ error: 'Solo puedes crear usuarios en tus sucursales asignadas' })
+        return
+      }
+
+      if (createUserDto.role === UserRole.ADMIN || createUserDto.role === UserRole.SALES_COORDINATOR) {
+        res.status(403).json({ error: 'No puedes crear usuarios con ese rol' })
+        return
+      }
     }
 
     new RegisterUserUseCase(this.authRepository)

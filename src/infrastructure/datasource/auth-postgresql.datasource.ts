@@ -86,8 +86,10 @@ export class AuthPostgresqlDatasource implements AuthDatasource {
       throw CustomError.BadRequest('User already exist')
     }
 
-    if (rest.role !== 'BRANCH_MANAGER' && branchIds.length > 1) {
-      throw CustomError.BadRequest('Solo BRANCH_MANAGER puede tener múltiples sucursales')
+    const canUseMultipleBranches = rest.role === 'BRANCH_MANAGER' || rest.role === 'SALES_COORDINATOR'
+
+    if (!canUseMultipleBranches && branchIds.length > 1) {
+      throw CustomError.BadRequest('Solo BRANCH_MANAGER y SALES_COORDINATOR pueden tener multiples sucursales')
     }
 
     const branches = await prismaClient.branch.findMany({

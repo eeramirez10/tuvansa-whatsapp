@@ -1,6 +1,11 @@
 import { $Enums } from "@prisma/client";
 import { Validators } from "../../../config/validators";
 
+const MULTI_BRANCH_ROLES = new Set<$Enums.UserRole>([
+  "BRANCH_MANAGER",
+  "SALES_COORDINATOR"
+]);
+
 interface Options {
   userId: string;
   name: string;
@@ -70,8 +75,8 @@ export class UpdateUserDto {
     if (!username) return ["Missing username"];
     if (!email) return ["Missing email"];
     if (branchIds.length === 0) return ["Missing branchIds"];
-    if (role !== "BRANCH_MANAGER" && branchIds.length > 1) {
-      return ["Solo BRANCH_MANAGER puede tener múltiples sucursales"];
+    if (!MULTI_BRANCH_ROLES.has(role) && branchIds.length > 1) {
+      return ["Solo BRANCH_MANAGER y SALES_COORDINATOR pueden tener multiples sucursales"];
     }
     if (!Validators.email.test(email)) return ["Email is not valid"];
     if (password && password.length < 6) return ["Password too short"];

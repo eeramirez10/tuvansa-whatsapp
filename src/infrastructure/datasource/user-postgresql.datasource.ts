@@ -174,8 +174,8 @@ export class UserPostgresqlDatasource implements UserDatasource {
       if (conflictingUser.phone && conflictingUser.phone === updateUserDto.phone) throw new Error('Teléfono ya está en uso')
     }
 
-    if (updateUserDto.role !== 'BRANCH_MANAGER' && updateUserDto.branchIds.length > 1) {
-      throw new Error('Solo BRANCH_MANAGER puede tener múltiples sucursales')
+    if (!this.canUseMultipleBranches(updateUserDto.role) && updateUserDto.branchIds.length > 1) {
+      throw new Error('Solo BRANCH_MANAGER y SALES_COORDINATOR pueden tener multiples sucursales')
     }
 
     const branches = await prisma.branch.findMany({
@@ -484,11 +484,15 @@ export class UserPostgresqlDatasource implements UserDatasource {
     return [...new Set(values)]
   }
 
-  private applyRoleBranchLimit(role: UserRole, branchIds: string[]): string[] {
+  private applyRoleBranchLimit(role: UserRole | string, branchIds: string[]): string[] {
     const values = [...new Set(branchIds.filter(Boolean))]
-    if (role === UserRole.BRANCH_MANAGER) return values
+    if (this.canUseMultipleBranches(role)) return values
     if (values.length === 0) return []
     return [values[0]]
+  }
+
+  private canUseMultipleBranches(role: UserRole | string): boolean {
+    return role === UserRole.BRANCH_MANAGER || role === UserRole.SALES_COORDINATOR
   }
 
   private buildUserBranches(options: {

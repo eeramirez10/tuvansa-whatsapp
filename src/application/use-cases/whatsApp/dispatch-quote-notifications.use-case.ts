@@ -185,7 +185,9 @@ export class DispatchQuoteNotificationsUseCase {
       WhatsappNotificationTemplate.QUOTE_WORKFLOW_MANAGER_REJECT_REASON_PENDING_ERP
     ]);
 
-    const canManageWorkflow = role === UserRole.ADMIN || role === UserRole.BRANCH_MANAGER;
+    const canManageWorkflow = role === UserRole.ADMIN
+      || role === UserRole.BRANCH_MANAGER
+      || role === UserRole.SALES_COORDINATOR;
     const safeTemplate = !canManageWorkflow && interactiveTemplates.has(configuredTemplate)
       ? WhatsappNotificationTemplate.QUOTE_WEB_NOTIFICATION_ICONS
       : configuredTemplate;

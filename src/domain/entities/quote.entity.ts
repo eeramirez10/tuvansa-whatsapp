@@ -29,6 +29,9 @@ interface QuoteOptions {
   reminderCount?: number
   workflowUpdatedAt?: Date
   workflowUpdatedById?: string | null
+  assignedSellerId?: string | null
+  assignedById?: string | null
+  assignedAt?: Date | null
 }
 
 
@@ -57,6 +60,9 @@ export class QuoteEntity {
   readonly reminderCount?: number
   readonly workflowUpdatedAt?: Date
   readonly workflowUpdatedById?: string | null
+  readonly assignedSellerId?: string | null
+  readonly assignedById?: string | null
+  readonly assignedAt?: Date | null
 
   constructor(options: QuoteOptions) {
     this.id = options.id;
@@ -81,5 +87,8 @@ export class QuoteEntity {
     this.reminderCount = options.reminderCount
     this.workflowUpdatedAt = options.workflowUpdatedAt
     this.workflowUpdatedById = options.workflowUpdatedById
+    this.assignedSellerId = options.assignedSellerId
+    this.assignedById = options.assignedById
+    this.assignedAt = options.assignedAt
   }
 }

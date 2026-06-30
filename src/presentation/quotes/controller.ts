@@ -4,6 +4,7 @@ import { GetQuotesUseCase } from '../../application/use-cases/quotes/get-quotes.
 import { GetQuoteById } from '../../application/use-cases/quotes/get-quote-by-id.use-case';
 import { GetTodoDto } from '../../domain/dtos/quotes/get-todo.dto';
 import { UpdateQuoteItemDto } from '../../domain/dtos/quotes/update-quote-item.dto';
+import { AssignQuoteSellerDto } from '../../domain/dtos/quotes/assign-quote-seller.dto';
 import { UpdateQuoteItemUseCase } from '../../application/use-cases/quotes/update-quote-item.use-case';
 import { GetQuotesDto } from '../../domain/dtos/quotes/get-quotes.dto';
 import { UpdateQuoteWorkflowDto } from '../../domain/dtos/quotes/update-quote-workflow.dto';
@@ -24,10 +25,13 @@ import { buildDisplayQuery } from '../../domain/parse/quotes/parse';
 import { GetQuoteDisplayUseCase } from '../../application/use-cases/quotes/get-quote-display.use-case';
 import { FileStorageService } from '../../domain/services/file-storage.service';
 import { QuoteExtractionService } from '../../domain/services/quote-extraction.service';
+import { EmailService } from '../../infrastructure/services/mail.service';
 import { UserRepository } from '../../domain/repositories/user-repository';
 import { MessageService } from '../../domain/services/message.service';
-
-
+import { UpdateQuoteDto } from '../../domain/dtos/quotes/update-quote.dto';
+import { envs } from '../../config/envs';
+import { WhatsAppNotificationService } from '../../infrastructure/services/whatsapp-notification.service';
+import { WhatsappTemplate } from '../../infrastructure/template/whatsapp/whatsapp-templates';
 
 export class QuotesController {
 
@@ -39,7 +43,8 @@ export class QuotesController {
     private readonly storage: FileStorageService,
     private readonly quoteExtractionService: QuoteExtractionService,
     private readonly userRepository: UserRepository,
-    private readonly messageService: MessageService
+    private readonly messageService: MessageService,
+    private readonly emailService: EmailService
   ) {
 
   }
@@ -186,6 +191,127 @@ export class QuotesController {
     }
   }
 
+  assignSeller = async (req: Request, res: Response) => {
+    const quoteId = req.params.id as string
+    const user = req.body.user
+
+    if (!this.canAssignQuotes(user)) {
+      res.status(403).json({ error: 'No tienes permiso para asignar cotizaciones' })
+      return
+    }
+
+    const [idError] = GetTodoDto.execute({ id: quoteId })
+    if (idError) {
+      res.status(400).json({ error: idError })
+      return
+    }
+
+    const [dtoError, dto] = AssignQuoteSellerDto.execute(req.body)
+    if (dtoError || !dto) {
+      res.status(400).json({ error: dtoError })
+      return
+    }
+
+    try {
+      const quote = await this.quoteRepository.getQuote(quoteId)
+      if (!quote) {
+        res.status(404).json({ error: 'Cotización no encontrada' })
+        return
+      }
+
+      if (!this.canAccessQuote(user, quote.branchId)) {
+        res.status(403).json({ error: 'No tienes permiso para asignar esta cotización' })
+        return
+      }
+
+      if (dto.sellerId === null) {
+        const [updateError, updateDto] = UpdateQuoteDto.execute({
+          assignedSellerId: null,
+          assignedById: null,
+          assignedAt: null
+        })
+
+        if (updateError || !updateDto) {
+          res.status(400).json({ error: updateError ?? 'No se pudo preparar la desasignacion' })
+          return
+        }
+
+        const updatedQuote = await this.quoteRepository.updateQuote(quoteId, updateDto)
+
+        res.json({
+          ok: true,
+          message: `Asignacion eliminada de COT-${quote.quoteNumber}`,
+          quote: updatedQuote,
+          notifications: {
+            whatsappSent: false,
+            emailSent: false
+          }
+        })
+        return
+      }
+
+      const seller = await this.prisma.user.findUnique({
+        where: { id: dto.sellerId },
+        include: {
+          branchAssignments: {
+            select: {
+              branchId: true
+            }
+          }
+        }
+      })
+
+      if (!seller) {
+        res.status(404).json({ error: 'Vendedor no encontrado' })
+        return
+      }
+
+      if (seller.role !== UserRole.VENDOR) {
+        res.status(400).json({ error: 'El usuario seleccionado no tiene rol VENDOR' })
+        return
+      }
+
+      if (!seller.isActive) {
+        res.status(400).json({ error: 'El vendedor seleccionado esta inactivo' })
+        return
+      }
+
+      const sellerBranchIds = this.getUserBranchIds(seller)
+      if (quote.branchId && !sellerBranchIds.includes(quote.branchId)) {
+        res.status(400).json({ error: 'El vendedor no tiene acceso a la sucursal de esta cotización' })
+        return
+      }
+
+      const [updateError, updateDto] = UpdateQuoteDto.execute({
+        assignedSellerId: seller.id,
+        assignedById: `${user?.id ?? ''}`.trim() || null,
+        assignedAt: new Date()
+      })
+
+      if (updateError || !updateDto) {
+        res.status(400).json({ error: updateError ?? 'No se pudo preparar la asignacion' })
+        return
+      }
+
+      const updatedQuote = await this.quoteRepository.updateQuote(quoteId, updateDto)
+      const notificationResult = await this.notifyAssignedSeller({
+        quote: updatedQuote,
+        seller,
+        assignedByName: this.getUserFullName(user)
+      })
+
+      res.json({
+        ok: true,
+        message: `Cotizacion COT-${quote.quoteNumber} asignada a ${this.getUserFullName(seller)}`,
+        quote: updatedQuote,
+        notifications: notificationResult
+      })
+    } catch (error) {
+      console.log(error)
+      res.status(500).json({ error: 'Hubo un error al asignar la cotizacion' })
+    }
+  }
+
   processQuoteFile = async (req: Request, res: Response) => {
     const quoteId = req.params.id as string
     const user = req.body.user
@@ -306,7 +432,7 @@ export class QuotesController {
 
   updateQuote = (req: Request, res: Response) => {
 
-    const id = req.params.id
+    const id = req.params.id as string
 
     const [error, dto] = UpdateQuoteItemDto.execute(req.body)
 
@@ -332,7 +458,7 @@ export class QuotesController {
 
   saveDraft = (req: Request, res: Response) => {
 
-    const quoteId = req.params.quoteId
+    const quoteId = req.params.quoteId as string
     const body = req.body
     const sellerId = req.body.user.id
 
@@ -364,7 +490,7 @@ export class QuotesController {
   getDisplay = (req: Request, res: Response) => {
     try {
 
-      const quoteId = req.params.quoteId;
+      const quoteId = req.params.quoteId as string;
       if (!quoteId) {
         res.status(400).json({ ok: false, error: 'Missing quoteId' });
         return
@@ -473,6 +599,10 @@ export class QuotesController {
     return user?.role === UserRole.ADMIN
   }
 
+  private canAssignQuotes(user: any): boolean {
+    return user?.role === UserRole.ADMIN || user?.role === UserRole.SALES_COORDINATOR
+  }
+
   private canAccessQuote(user: any, quoteBranchId?: string | null): boolean {
     if (!user) return false
     if (this.isAdmin(user)) return true
@@ -488,8 +618,99 @@ export class QuotesController {
     ].filter(Boolean)
 
     const uniqueValues = [...new Set(values)]
-    if (user?.role === UserRole.BRANCH_MANAGER) return uniqueValues
+    if (user?.role === UserRole.BRANCH_MANAGER || user?.role === UserRole.SALES_COORDINATOR) {
+      return uniqueValues
+    }
     if (uniqueValues.length === 0) return []
     return [uniqueValues[0]]
+  }
+
+  private getUserFullName(user: { name?: string | null; lastname?: string | null }): string {
+    return [user?.name ?? '', user?.lastname ?? '']
+      .map((value) => `${value}`.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+  }
+
+  private buildQuoteSystemUrl(quoteId: string): string {
+    return `${envs.APP_URL.replace(/\/$/, '')}/quotes/workflow/${quoteId}`
+  }
+
+  private buildAssignedSellerMessage(options: {
+    quoteNumber: number
+    customerName: string
+    branchName: string
+    assignedByName: string
+  }): string {
+    const assignedBy = options.assignedByName ? ` Asignado por: ${options.assignedByName}.` : ''
+    return `Nueva cotizacion asignada COT-${options.quoteNumber}. Cliente: ${options.customerName}. Sucursal: ${options.branchName}.${assignedBy}`
+  }
+
+  private buildAssignedSellerEmail(options: {
+    quoteNumber: number
+    customerName: string
+    branchName: string
+    assignedByName: string
+    systemUrl: string
+  }): string {
+    return `
+      <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+        <h2 style="margin-bottom: 16px;">Nueva cotizacion asignada</h2>
+        <p>Se te asigno la cotizacion <strong>COT-${options.quoteNumber}</strong>.</p>
+        <p><strong>Cliente:</strong> ${options.customerName}</p>
+        <p><strong>Sucursal:</strong> ${options.branchName}</p>
+        <p><strong>Asignado por:</strong> ${options.assignedByName || 'Sistema'}</p>
+        <div style="margin-top: 24px;">
+          <a href="${options.systemUrl}" style="display: inline-block; background: #f59e0b; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 700;">Entrar al sistema</a>
+        </div>
+        <p style="margin-top: 16px; font-size: 12px; color: #6b7280;">Si el boton no abre, usa este enlace: ${options.systemUrl}</p>
+      </div>
+    `
+  }
+
+  private async notifyAssignedSeller(options: {
+    quote: any
+    seller: any
+    assignedByName: string
+  }): Promise<{ whatsappSent: boolean; emailSent: boolean }> {
+    const customerName = this.getUserFullName(options.quote.customer ?? {}) || 'Cliente sin nombre'
+    const branchName = `${options.quote.branch?.name ?? 'Sucursal sin nombre'}`.trim()
+    const systemUrl = this.buildQuoteSystemUrl(options.quote.id)
+    const summary = this.buildAssignedSellerMessage({
+      quoteNumber: options.quote.quoteNumber,
+      customerName,
+      branchName,
+      assignedByName: options.assignedByName
+    })
+    const whatsappService = new WhatsAppNotificationService(this.messageService)
+
+    const results = await Promise.allSettled([
+      options.seller.phone
+        ? whatsappService.sendTemplateMessage(WhatsappTemplate.QUOTE_WEB_NOTIFICATION, {
+            to: options.seller.phone,
+            quote: { summary },
+            url: systemUrl
+          })
+        : Promise.resolve(null),
+      options.seller.email
+        ? this.emailService.sendEmail({
+            to: options.seller.email,
+            subject: `Nueva cotizacion asignada COT-${options.quote.quoteNumber}`,
+            htmlBody: this.buildAssignedSellerEmail({
+              quoteNumber: options.quote.quoteNumber,
+              customerName,
+              branchName,
+              assignedByName: options.assignedByName,
+              systemUrl
+            })
+          })
+        : Promise.resolve(null)
+    ])
+
+    return {
+      whatsappSent: results[0]?.status === 'fulfilled' && Boolean(options.seller.phone),
+      emailSent: results[1]?.status === 'fulfilled' && Boolean(options.seller.email)
+    }
   }
 }

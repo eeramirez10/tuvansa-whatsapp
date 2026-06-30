@@ -17,7 +17,7 @@ export class AuthRoutes {
 
     const controller = new AuthController(repository)
 
-    router.post('/register', controller.registerUser)
+    router.post('/register', AuthMiddleware.validateJWT, controller.registerUser)
 
     router.post('/login', controller.loginUser)
 

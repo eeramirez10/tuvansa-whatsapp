@@ -18,6 +18,9 @@ export interface UpdateQuote {
   reminderCount?: number;
   workflowUpdatedAt?: Date;
   workflowUpdatedById?: string | null;
+  assignedSellerId?: string | null;
+  assignedById?: string | null;
+  assignedAt?: Date | null;
 }
 
 export class UpdateQuoteDto {
@@ -38,6 +41,9 @@ export class UpdateQuoteDto {
   public readonly reminderCount?: number;
   public readonly workflowUpdatedAt?: Date;
   public readonly workflowUpdatedById?: string | null;
+  public readonly assignedSellerId?: string | null;
+  public readonly assignedById?: string | null;
+  public readonly assignedAt?: Date | null;
 
   private constructor(options: UpdateQuote) {
     this.customerId = options.customerId;
@@ -57,6 +63,9 @@ export class UpdateQuoteDto {
     this.reminderCount = options.reminderCount;
     this.workflowUpdatedAt = options.workflowUpdatedAt;
     this.workflowUpdatedById = options.workflowUpdatedById;
+    this.assignedSellerId = options.assignedSellerId;
+    this.assignedById = options.assignedById;
+    this.assignedAt = options.assignedAt;
   }
 
   static execute(quote: UpdateQuote): [string?, UpdateQuoteDto?] {
@@ -86,6 +95,18 @@ export class UpdateQuoteDto {
     if (quote.chatThreadId !== undefined) {
       if (quote.chatThreadId !== null && (typeof quote.chatThreadId !== "string" || quote.chatThreadId.trim() === "")) {
         return ["El chatThreadId, de estar presente, debe ser una cadena no vacía o null para desvincular"];
+      }
+    }
+
+    if (quote.assignedSellerId !== undefined) {
+      if (quote.assignedSellerId !== null && (typeof quote.assignedSellerId !== "string" || quote.assignedSellerId.trim() === "")) {
+        return ["El assignedSellerId, de estar presente, debe ser una cadena no vacia o null para desvincular"];
+      }
+    }
+
+    if (quote.assignedById !== undefined) {
+      if (quote.assignedById !== null && (typeof quote.assignedById !== "string" || quote.assignedById.trim() === "")) {
+        return ["El assignedById, de estar presente, debe ser una cadena no vacia o null para desvincular"];
       }
     }
 
@@ -131,6 +152,17 @@ export class UpdateQuoteDto {
         : quote.workflowUpdatedById === null
           ? null
           : quote.workflowUpdatedById.trim(),
+      assignedSellerId: quote.assignedSellerId === undefined
+        ? undefined
+        : quote.assignedSellerId === null
+          ? null
+          : quote.assignedSellerId.trim(),
+      assignedById: quote.assignedById === undefined
+        ? undefined
+        : quote.assignedById === null
+          ? null
+          : quote.assignedById.trim(),
+      assignedAt: quote.assignedAt,
     })];
   }
 }

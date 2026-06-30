@@ -11,6 +11,32 @@ import { PaginationResult } from "../../domain/entities/pagination-result";
 import dayjs from "dayjs";
 import { FindQuotesPendingReminderOptions, ReplaceQuoteItemInput } from "../../domain/repositories/quote.repository";
 
+const quoteUserSelect = {
+  id: true,
+  name: true,
+  lastname: true,
+  email: true,
+  phone: true,
+  role: true,
+  branchId: true
+} as const
+
+const quoteInclude = {
+  customer: true,
+  items: true,
+  branch: true,
+  assignedSeller: {
+    select: quoteUserSelect
+  },
+  assignedBy: {
+    select: quoteUserSelect
+  },
+  chatThread: {
+    include: {
+      messages: true
+    }
+  }
+} as const
 
 const prismaClient = new PrismaClient()
 
@@ -39,9 +65,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
       },
       take: limit,
       include: {
-        customer: true,
-        items: true,
-        branch: true
+        ...quoteInclude
       }
     })
   }
@@ -56,7 +80,10 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
   async updateQuote(id: string, updateQuoteDto: UpdateQuoteDto): Promise<QuoteEntity> {
     return await prismaClient.quote.update({
       where: { id },
-      data: updateQuoteDto
+      data: updateQuoteDto,
+      include: {
+        ...quoteInclude
+      }
     })
   }
 
@@ -92,14 +119,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     const updatedQuote = await prismaClient.quote.findFirst({
       where: { id: quoteId },
       include: {
-        customer: true,
-        items: true,
-        branch: true,
-        chatThread: {
-          include: {
-            messages: true
-          }
-        }
+        ...quoteInclude
       }
     })
 
@@ -119,14 +139,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           id
         },
         include: {
-          customer: true,
-          items: true,
-          branch: true,
-          chatThread: {
-            include: {
-              messages: true
-            }
-          }
+          ...quoteInclude
         }
       })
 
@@ -169,15 +182,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
           skip,
           take,
           include: {
-            customer: true,
-            items: true,
-            branch: true,
-            // OJO: si messages es grande, considera limitar campos o contar:
-            chatThread: {
-              include: {
-                messages: true
-              }
-            }
+            ...quoteInclude
           }
         })
 
@@ -207,9 +212,7 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
       return await prismaClient.quote.findFirst({
         where: { quoteNumber },
         include: {
-          customer: true,
-          items: true,
-          branch: true
+          ...quoteInclude
         }
       })
 

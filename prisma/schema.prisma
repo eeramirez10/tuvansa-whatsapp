@@ -55,6 +55,8 @@ enum UserRole {
   ADMIN
   USER
   BRANCH_MANAGER
+  SALES_COORDINATOR
+  VENDOR
   SUPPORT
   VIEWER
   // Agrega más roles si los necesitas, por ejemplo:
@@ -167,6 +169,8 @@ model User {
   complaints_responded Complaint[]    @relation("RespondedComplaints")
   notificationSettings UserNotificationSetting[]
   workflowSessions     WhatsAppWorkflowSession[]
+  assignedSellerQuotes Quote[]        @relation("AssignedSellerQuotes")
+  quoteAssignmentsMade Quote[]        @relation("AssignedByUserQuotes")
   branchAssignments    UserBranchAssignment[]
 }
 
@@ -261,6 +265,11 @@ model Quote {
   reminderCount       Int       @default(0)
   workflowUpdatedAt   DateTime  @default(now())
   workflowUpdatedById String?   @db.Uuid
+  assignedSellerId    String?   @db.Uuid
+  assignedSeller      User?     @relation("AssignedSellerQuotes", fields: [assignedSellerId], references: [id], onDelete: SetNull)
+  assignedById        String?   @db.Uuid
+  assignedBy          User?     @relation("AssignedByUserQuotes", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt          DateTime?
 
   fileKey String?
 
@@ -277,6 +286,8 @@ model Quote {
   @@index([chatThreadId])
   @@index([workflowStatus])
   @@index([branchId, workflowStatus])
+  @@index([assignedSellerId])
+  @@index([assignedById])
 }
 
 model QuoteItem {

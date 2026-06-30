@@ -48,8 +48,8 @@ export class BranchPostgresqlDatasource implements BranchDatasource {
       if (!manager) {
         throw new BranchAssignManagerError('Manager no encontrado')
       }
-      if (manager.role !== 'BRANCH_MANAGER') {
-        throw new BranchAssignManagerError('Solo usuarios BRANCH_MANAGER pueden gestionar múltiples sucursales')
+      if (manager.role !== 'BRANCH_MANAGER' && manager.role !== 'SALES_COORDINATOR') {
+        throw new BranchAssignManagerError('Solo usuarios BRANCH_MANAGER o SALES_COORDINATOR pueden gestionar multiples sucursales')
       }
 
       const updatedBranch = await prismaClient.$transaction(async (tx) => {

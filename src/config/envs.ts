@@ -33,5 +33,6 @@ export const envs = {
   TWILIO_TEMPLATE_WORKFLOW_REMINDER: get('TWILIO_TEMPLATE_WORKFLOW_REMINDER').asString(),
   DEV_PHONE_NUMBER: !isProduction ? get('DEV_PHONE_NUMBER').asString() : undefined,
   QUOTE_EXTRACTION_API_URL: get('QUOTE_EXTRACTION_API_URL').default('http://localhost:4500').asString(),
+  APP_URL: get('APP_URL').default(isProduction ? apiUrl : 'http://localhost:5173').asString(),
   API_URL: apiUrl
-} 
+}

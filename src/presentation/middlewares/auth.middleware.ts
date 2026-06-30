@@ -66,7 +66,9 @@ export class AuthMiddleware {
         `${user.branchId ?? ''}`.trim(),
         ...user.branchAssignments.map((item) => `${item.branchId ?? ''}`.trim())
       ].filter(Boolean).filter((value, index, values) => values.indexOf(value) === index)
-      const branchIds = user.role === 'BRANCH_MANAGER'
+      const canUseMultipleBranches = user.role === 'BRANCH_MANAGER'
+        || user.role === 'SALES_COORDINATOR'
+      const branchIds = canUseMultipleBranches
         ? allBranchIds
         : allBranchIds.length > 0 ? [allBranchIds[0]] : []
 
