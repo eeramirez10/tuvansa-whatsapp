@@ -1,4 +1,5 @@
-import { UserEntity } from "../../entities/user.entity";
+import { UserEntity } from "../../entities/user.entity.entity";
+
 
 export type PreferMode = 'final' | 'draft';
 

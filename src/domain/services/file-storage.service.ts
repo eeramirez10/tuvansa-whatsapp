@@ -1,5 +1,5 @@
 import { Readable } from "stream";
-import { StreamingBlobPayloadOutputTypes } from "@smithy/types";
+
 
 export interface UploadOptions {
   key: string;

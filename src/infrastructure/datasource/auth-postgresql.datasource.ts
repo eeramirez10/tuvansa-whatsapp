@@ -8,7 +8,8 @@ import { CustomError } from "../../domain/errors/custom-error";
 import { CheckFieldDto } from "../../domain/dtos/auth/check-field.dto";
 
 import { PaginationResult } from "../../domain/entities/pagination-result";
-import { UserEntity } from "../../domain/entities/user.entity";
+import { UserEntity } from "../../domain/entities/user.entity.entity";
+
 
 
 interface Option {

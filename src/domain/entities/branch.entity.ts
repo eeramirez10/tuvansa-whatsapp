@@ -1,5 +1,6 @@
 import { Branch } from "@prisma/client";
-import { UserEntity } from "./user.entity";
+import { UserEntity } from "./user.entity.entity";
+
 
 
 interface BranchEntityOptions {

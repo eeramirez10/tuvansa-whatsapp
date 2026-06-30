@@ -66,7 +66,7 @@ export class BranchController {
 
   getBranch = (req: Request, res: Response) => {
 
-    const id = req.params.id
+    const id = req.params.id as string;
 
     new GetBranchUseCase(this.branchRepository)
       .execute(id)
