@@ -9,18 +9,21 @@ interface Options {
   workflowStatus?: string;
   branchId?: string;
   branchIds?: string[];
+  assignedSellerId?: string;
 }
 
 export class GetQuotesDto extends PaginationDto {
   workflowStatus?: QuoteWorkflowStatus;
   branchId?: string;
   branchIds?: string[];
+  assignedSellerId?: string;
 
   constructor(options: Options) {
     super(options);
     this.workflowStatus = options.workflowStatus as QuoteWorkflowStatus | undefined;
     this.branchId = options.branchId;
     this.branchIds = options.branchIds;
+    this.assignedSellerId = options.assignedSellerId;
   }
 
   static execute(values: Record<any, any>): [string?, GetQuotesDto?] {
@@ -49,6 +52,7 @@ export class GetQuotesDto extends PaginationDto {
     const branchIds = Array.isArray(values.branchIds)
       ? [...new Set(values.branchIds.map((value) => String(value)).filter(Boolean))]
       : undefined;
+    const assignedSellerId = values.assignedSellerId ? String(values.assignedSellerId) : undefined;
 
     return [undefined, new GetQuotesDto({
       page: String(pagination.page ?? 1),
@@ -57,7 +61,8 @@ export class GetQuotesDto extends PaginationDto {
       endDate: pagination.endDate,
       workflowStatus: workflowStatusRaw ? String(workflowStatusRaw).toUpperCase() : undefined,
       branchId,
-      branchIds
+      branchIds,
+      assignedSellerId
     })];
   }
 }

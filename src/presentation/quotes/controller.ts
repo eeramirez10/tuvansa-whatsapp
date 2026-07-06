@@ -62,7 +62,11 @@ export class QuotesController {
       return
     }
 
-    if (!this.isAdmin(user)) {
+    if (this.isVendor(user)) {
+      getQuotesDto.assignedSellerId = user?.id
+      getQuotesDto.branchIds = undefined
+      getQuotesDto.branchId = undefined
+    } else if (!this.isAdmin(user)) {
       const allowedBranchIds = this.getUserBranchIds(user)
       if (allowedBranchIds.length === 0) {
         res.json({
@@ -114,7 +118,7 @@ export class QuotesController {
           return
         }
 
-        if (!this.canAccessQuote(user, quote.branchId)) {
+        if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
           res.status(403).json({ error: 'No tienes permiso para ver esta cotización' })
           return
         }
@@ -154,7 +158,7 @@ export class QuotesController {
         return
       }
 
-      if (!this.canAccessQuote(user, quote.branchId)) {
+      if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
         res.status(403).json({ error: 'No tienes permiso para modificar esta cotización' })
         return
       }
@@ -219,7 +223,7 @@ export class QuotesController {
         return
       }
 
-      if (!this.canAccessQuote(user, quote.branchId)) {
+      if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
         res.status(403).json({ error: 'No tienes permiso para asignar esta cotización' })
         return
       }
@@ -329,7 +333,7 @@ export class QuotesController {
         return
       }
 
-      if (!this.canAccessQuote(user, quote.branchId)) {
+      if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
         res.status(403).json({ error: 'No tienes permiso para procesar esta cotización' })
         return
       }
@@ -374,7 +378,7 @@ export class QuotesController {
         return
       }
 
-      if (!this.canAccessQuote(user, quote.branchId)) {
+      if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
         res.status(403).json({ error: 'No tienes permiso para actualizar esta cotización' })
         return
       }
@@ -563,7 +567,7 @@ export class QuotesController {
         return
       }
 
-      if (!this.canAccessQuote(user, quote.branchId)) {
+      if (!this.canAccessQuote(user, quote.branchId, quote.assignedSellerId)) {
         res.status(403).json({ error: 'No tienes permiso para descargar esta cotización' })
         return
       }
@@ -599,13 +603,18 @@ export class QuotesController {
     return user?.role === UserRole.ADMIN
   }
 
+  private isVendor(user: any): boolean {
+    return user?.role === UserRole.VENDOR
+  }
+
   private canAssignQuotes(user: any): boolean {
     return user?.role === UserRole.ADMIN || user?.role === UserRole.SALES_COORDINATOR
   }
 
-  private canAccessQuote(user: any, quoteBranchId?: string | null): boolean {
+  private canAccessQuote(user: any, quoteBranchId?: string | null, assignedSellerId?: string | null): boolean {
     if (!user) return false
     if (this.isAdmin(user)) return true
+    if (this.isVendor(user)) return Boolean(assignedSellerId) && assignedSellerId === user?.id
     if (!quoteBranchId) return false
     return this.getUserBranchIds(user).includes(quoteBranchId)
   }

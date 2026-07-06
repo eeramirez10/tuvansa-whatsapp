@@ -167,6 +167,9 @@ export class QuotePostgresqlDatasource extends QuoteDatasource {
     if (getQuotesDto.workflowStatus) {
       where.workflowStatus = getQuotesDto.workflowStatus;
     }
+    if (getQuotesDto.assignedSellerId) {
+      where.assignedSellerId = getQuotesDto.assignedSellerId;
+    }
 
     const skip = (page - 1) * pageSize;
     const take = pageSize;
