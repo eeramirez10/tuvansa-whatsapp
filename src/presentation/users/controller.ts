@@ -13,70 +13,175 @@ import { SendUserNotificationTestDto } from '../../domain/dtos/users/send-user-n
 import { UpdateInProgressReminderConfigDto } from '../../domain/dtos/users/update-in-progress-reminder-config.dto';
 import { UpdateUserDto } from '../../domain/dtos/users/update-user.dto';
 import { UpsertUserNotificationSettingDto } from '../../domain/dtos/users/upsert-user-notification-setting.dto';
+import { UsersResponseDTO } from '../../domain/dtos/users/users-response.dto';
 import { UserRepository } from '../../domain/repositories/user-repository';
 import { MessageService } from '../../domain/services/message.service';
 
-
 export class UsersController {
-
   constructor(
     private readonly userRepository: UserRepository,
     private readonly messageService: MessageService
-  ) {
+  ) {}
 
+  private normalizeRole(role: unknown): string {
+    return `${role ?? ""}`.trim().toUpperCase()
   }
 
+  private isAdmin(user: any): boolean {
+    return this.normalizeRole(user?.role) === 'ADMIN'
+  }
 
+  private isSalesCoordinator(user: any): boolean {
+    return this.normalizeRole(user?.role) === 'SALES_COORDINATOR'
+  }
 
-  getAll = (req: Request, res: Response) => {
+  private canManageUsers(user: any): boolean {
+    return this.isAdmin(user) || this.isSalesCoordinator(user)
+  }
 
+  private getUserBranchIds(user: any): string[] {
+    const values = [
+      `${user?.branchId ?? ""}`.trim(),
+      ...(Array.isArray(user?.branchIds) ? user.branchIds.map((branchId: unknown) => `${branchId ?? ""}`.trim()) : []),
+      ...(Array.isArray(user?.branchAssignments) ? user.branchAssignments.map((item: any) => `${item?.branchId ?? ""}`.trim()) : []),
+    ].filter(Boolean)
 
-    this.userRepository.list()
-      .then((users) => {
+    return [...new Set(values)]
+  }
 
+  private getManagedUserBranchIds(user: UsersResponseDTO): string[] {
+    const values = [
+      `${user.branch?.id ?? ""}`.trim(),
+      ...(Array.isArray(user.branches) ? user.branches.map((branch) => `${branch?.id ?? ""}`.trim()) : []),
+    ].filter(Boolean)
+
+    return [...new Set(values)]
+  }
+
+  private canCoordinatorManageTarget(currentUser: any, targetUser: UsersResponseDTO): boolean {
+    if (!this.isSalesCoordinator(currentUser)) return true
+    if (this.normalizeRole(targetUser.role) !== 'VENDOR') return false
+
+    const allowedBranchIds = this.getUserBranchIds(currentUser)
+    const targetBranchIds = this.getManagedUserBranchIds(targetUser)
+
+    return targetBranchIds.length === 1 && targetBranchIds.every((branchId) => allowedBranchIds.includes(branchId))
+  }
+
+  private filterManageableUsers(currentUser: any, users: UsersResponseDTO[]): UsersResponseDTO[] {
+    if (this.isAdmin(currentUser)) return users
+    if (!this.isSalesCoordinator(currentUser)) return []
+    return users.filter((user) => this.canCoordinatorManageTarget(currentUser, user))
+  }
+
+  private async getManageableTargetUser(currentUser: any, userId: string): Promise<UsersResponseDTO | null> {
+    const users = await this.userRepository.list()
+    const targetUser = users.find((user) => user.id === userId) ?? null
+    if (!targetUser) return null
+    if (!this.canCoordinatorManageTarget(currentUser, targetUser) && !this.isAdmin(currentUser)) return null
+    return targetUser
+  }
+
+  getAll = async (req: Request, res: Response) => {
+    const currentUser = req.body?.user
+    const manageableOnly = ['true', '1'].includes(`${req.query?.manageableOnly ?? ""}`.toLowerCase())
+
+    try {
+      const users = await this.userRepository.list()
+
+      if (!manageableOnly) {
         return res.status(200).json({ users })
-      })
-      .catch((e) => {
-        console.log(e,'Users Controller')
-        res.status(500).json({
-          error:'error internal server'
-        })
-      })
+      }
 
+      if (!this.canManageUsers(currentUser)) {
+        return res.status(403).json({ error: 'No autorizado' })
+      }
+
+      return res.status(200).json({ users: this.filterManageableUsers(currentUser, users) })
+    } catch (e) {
+      console.log(e, 'Users Controller')
+      return res.status(500).json({ error: 'error internal server' })
+    }
   }
 
-  update = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
-    if (requestUserRole !== 'ADMIN') {
+  update = async (req: Request, res: Response) => {
+    const currentUser = req.body?.user
+    const userId = `${req.params.id ?? ""}`
+
+    if (!this.canManageUsers(currentUser)) {
       return res.status(403).json({ error: 'No autorizado' })
     }
 
     const [error, dto] = UpdateUserDto.execute({
-      userId: req.params.id,
-      ...req.body
+      userId,
+      ...req.body,
     })
 
     if (error || !dto) {
       return res.status(400).json({ error: error ?? 'Payload inválido' })
     }
 
-    new UpdateUserUseCase(this.userRepository)
-      .execute(dto)
-      .then((user) => {
-        return res.status(200).json({ user })
-      })
-      .catch((e) => {
-        console.log(e, 'Users Controller update')
-        const message = `${e?.message ?? ''}` || 'error internal server'
-        const statusCode = message === 'error internal server' ? 500 : 400
-        res.status(statusCode).json({
-          error: message
-        })
-      })
+    try {
+      if (this.isSalesCoordinator(currentUser)) {
+        const targetUser = await this.getManageableTargetUser(currentUser, userId)
+
+        if (!targetUser) {
+          return res.status(403).json({ error: 'Solo puedes editar vendedores de tus sucursales asignadas' })
+        }
+
+        if (this.normalizeRole(dto.role) !== 'VENDOR') {
+          return res.status(403).json({ error: 'Solo puedes gestionar usuarios con rol VENDOR' })
+        }
+
+        const allowedBranchIds = this.getUserBranchIds(currentUser)
+        const hasForbiddenBranch = dto.branchIds.some((branchId) => !allowedBranchIds.includes(branchId))
+        if (hasForbiddenBranch) {
+          return res.status(403).json({ error: 'Solo puedes asignar sucursales dentro de tu alcance' })
+        }
+
+        if (dto.branchIds.length !== 1) {
+          return res.status(403).json({ error: 'Los vendedores solo pueden tener una sucursal' })
+        }
+      }
+
+      const user = await new UpdateUserUseCase(this.userRepository).execute(dto)
+      return res.status(200).json({ user })
+    } catch (e: any) {
+      console.log(e, 'Users Controller update')
+      const message = `${e?.message ?? ""}` || 'error internal server'
+      const statusCode = message === 'error internal server' ? 500 : 400
+      return res.status(statusCode).json({ error: message })
+    }
+  }
+
+  delete = async (req: Request, res: Response) => {
+    const currentUser = req.body?.user
+    const userId = `${req.params.id ?? ""}`
+
+    if (!this.canManageUsers(currentUser)) {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+
+    try {
+      if (this.isSalesCoordinator(currentUser)) {
+        const targetUser = await this.getManageableTargetUser(currentUser, userId)
+        if (!targetUser) {
+          return res.status(403).json({ error: 'Solo puedes eliminar vendedores de tus sucursales asignadas' })
+        }
+      }
+
+      await this.userRepository.delete(userId)
+      return res.status(200).json({ ok: true })
+    } catch (e: any) {
+      console.log(e, 'Users Controller delete')
+      const message = `${e?.message ?? ""}` || 'error internal server'
+      const statusCode = message === 'Usuario no encontrado' ? 404 : message === 'error internal server' ? 500 : 400
+      return res.status(statusCode).json({ error: message })
+    }
   }
 
   getNotificationSettings = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -103,7 +208,7 @@ export class UsersController {
   }
 
   deleteNotificationSetting = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -123,7 +228,7 @@ export class UsersController {
       })
       .catch((e) => {
         console.log(e, 'Users Controller deleteNotificationSetting')
-        const message = `${e?.message ?? ''}` || 'error internal server'
+        const message = `${e?.message ?? ""}` || 'error internal server'
         const statusCode = message === 'Configuración de notificación no encontrada' ? 404 : 500
         res.status(statusCode).json({
           error: message
@@ -132,7 +237,7 @@ export class UsersController {
   }
 
   upsertNotificationSetting = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -159,7 +264,7 @@ export class UsersController {
   }
 
   sendNotificationTest = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -186,7 +291,7 @@ export class UsersController {
   }
 
   sendNotificationTests = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -213,7 +318,7 @@ export class UsersController {
   }
 
   getInProgressReminderConfig = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }
@@ -232,7 +337,7 @@ export class UsersController {
   }
 
   updateInProgressReminderConfig = (req: Request, res: Response) => {
-    const requestUserRole = `${req.body?.user?.role ?? ''}`.toUpperCase()
+    const requestUserRole = `${req.body?.user?.role ?? ""}`.toUpperCase()
     if (requestUserRole !== 'ADMIN') {
       return res.status(403).json({ error: 'No autorizado' })
     }

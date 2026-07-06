@@ -258,6 +258,32 @@ export class UserPostgresqlDatasource implements UserDatasource {
     }
   }
 
+  async delete(userId: string): Promise<void> {
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true }
+    })
+
+    if (!existingUser) {
+      throw new Error('Usuario no encontrado')
+    }
+
+    try {
+      await prisma.user.delete({
+        where: { id: userId }
+      })
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new Error('No se puede eliminar el usuario porque tiene información relacionada')
+      }
+
+      throw error
+    }
+  }
+
   async listNotificationSettings(
     getUserNotificationSettingsDto: GetUserNotificationSettingsDto
   ): Promise<UserNotificationSettingResponseDto[]> {

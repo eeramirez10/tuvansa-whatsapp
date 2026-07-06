@@ -905,14 +905,12 @@ export class WhatsAppController {
   }
 
   private canManageWorkflow(user: InternalEmployeeResponseDto): boolean {
-    return user.role === UserRole.ADMIN
-      || user.role === UserRole.BRANCH_MANAGER
-      || user.role === UserRole.SALES_COORDINATOR
+    return user.role === UserRole.ADMIN || user.role === UserRole.BRANCH_MANAGER
   }
 
   private canAccessWorkflowQuote(user: InternalEmployeeResponseDto, quoteBranchId?: string | null): boolean {
     if (user.role === UserRole.ADMIN) return true
-    if (user.role !== UserRole.BRANCH_MANAGER && user.role !== UserRole.SALES_COORDINATOR) return false
+    if (user.role !== UserRole.BRANCH_MANAGER) return false
     if (!quoteBranchId) return false
     return this.getInternalUserBranchIds(user).includes(quoteBranchId)
   }

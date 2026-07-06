@@ -14,6 +14,7 @@ export abstract class UserRepository {
 
   abstract update(updateUserDto: UpdateUserDto): Promise<UsersResponseDTO>
 
+  abstract delete(userId: string): Promise<void>
 
   abstract findByWaID(waId: string): Promise<InternalEmployeeResponseDto | null>
 

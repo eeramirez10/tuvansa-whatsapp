@@ -90,8 +90,13 @@ export class AuthController {
         return
       }
 
-      if (createUserDto.role === UserRole.ADMIN || createUserDto.role === UserRole.SALES_COORDINATOR) {
-        res.status(403).json({ error: 'No puedes crear usuarios con ese rol' })
+      if (createUserDto.role !== UserRole.VENDOR) {
+        res.status(403).json({ error: 'Solo puedes crear usuarios con rol VENDOR' })
+        return
+      }
+
+      if (createUserDto.branchIds.length !== 1) {
+        res.status(403).json({ error: 'Los vendedores solo pueden tener una sucursal' })
         return
       }
     }

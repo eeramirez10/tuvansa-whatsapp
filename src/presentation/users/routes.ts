@@ -5,9 +5,7 @@ import { TwilioService } from "../../infrastructure/services/twilio.service";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { UsersController } from "./controller";
 
-
 export class UsersRoutes {
-
   static routes(): Router {
     const router = Router()
 
@@ -16,6 +14,7 @@ export class UsersRoutes {
     const {
       getAll,
       update,
+      delete: deleteUser,
       getNotificationSettings,
       deleteNotificationSetting,
       upsertNotificationSetting,
@@ -25,7 +24,7 @@ export class UsersRoutes {
       updateInProgressReminderConfig
     } = new UsersController(usersRepository, new TwilioService())
 
-    router.get('/', getAll);
+    router.get('/', AuthMiddleware.validateJWT, getAll);
     router.get('/notification-settings', AuthMiddleware.validateJWT, getNotificationSettings);
     router.delete('/notification-settings/:settingId', AuthMiddleware.validateJWT, deleteNotificationSetting);
     router.put('/notification-settings', AuthMiddleware.validateJWT, upsertNotificationSetting);
@@ -34,6 +33,7 @@ export class UsersRoutes {
     router.get('/workflow-reminder-config', AuthMiddleware.validateJWT, getInProgressReminderConfig);
     router.put('/workflow-reminder-config', AuthMiddleware.validateJWT, updateInProgressReminderConfig);
     router.put('/:id', AuthMiddleware.validateJWT, update);
+    router.delete('/:id', AuthMiddleware.validateJWT, deleteUser);
 
     return router
   }

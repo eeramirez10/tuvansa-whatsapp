@@ -18,6 +18,10 @@ export class UserRepositoryImpl implements UserRepository {
     return this.userDatasource.update(updateUserDto)
   }
 
+  delete(userId: string): Promise<void> {
+    return this.userDatasource.delete(userId)
+  }
+
   getInProgressReminderConfig(): Promise<boolean> {
     return this.userDatasource.getInProgressReminderConfig()
   }
