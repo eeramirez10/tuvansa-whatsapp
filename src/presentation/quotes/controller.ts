@@ -306,7 +306,7 @@ export class QuotesController {
 
   updateQuote = (req: Request, res: Response) => {
 
-    const id = req.params.id
+    const id = req.params.id as string
 
     const [error, dto] = UpdateQuoteItemDto.execute(req.body)
 
@@ -364,7 +364,7 @@ export class QuotesController {
   getDisplay = (req: Request, res: Response) => {
     try {
 
-      const quoteId = req.params.quoteId;
+      const quoteId = req.params.quoteId as string;
       if (!quoteId) {
         res.status(400).json({ ok: false, error: 'Missing quoteId' });
         return
