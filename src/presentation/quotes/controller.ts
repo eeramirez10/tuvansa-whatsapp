@@ -32,6 +32,7 @@ import { UpdateQuoteDto } from '../../domain/dtos/quotes/update-quote.dto';
 import { envs } from '../../config/envs';
 import { WhatsAppNotificationService } from '../../infrastructure/services/whatsapp-notification.service';
 import { WhatsappTemplate } from '../../infrastructure/template/whatsapp/whatsapp-templates';
+import { canAssignVendorFromScope } from './quote-assignment-access';
 
 export class QuotesController {
 
@@ -280,9 +281,8 @@ export class QuotesController {
         return
       }
 
-      const sellerBranchIds = this.getUserBranchIds(seller)
-      if (quote.branchId && !sellerBranchIds.includes(quote.branchId)) {
-        res.status(400).json({ error: 'El vendedor no tiene acceso a la sucursal de esta cotización' })
+      if (!canAssignVendorFromScope(user, seller)) {
+        res.status(403).json({ error: 'El vendedor no pertenece a una sucursal dentro de tu alcance' })
         return
       }
 

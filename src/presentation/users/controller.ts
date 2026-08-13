@@ -16,6 +16,15 @@ import { UpsertUserNotificationSettingDto } from '../../domain/dtos/users/upsert
 import { UsersResponseDTO } from '../../domain/dtos/users/users-response.dto';
 import { UserRepository } from '../../domain/repositories/user-repository';
 import { MessageService } from '../../domain/services/message.service';
+import {
+  canCoordinatorManageTarget,
+  canManageUsers,
+  filterManageableUsers,
+  getUserBranchIds,
+  isAdminUser,
+  isSalesCoordinatorUser,
+  normalizeUserRole
+} from './user-access';
 
 export class UsersController {
   constructor(
@@ -24,54 +33,31 @@ export class UsersController {
   ) {}
 
   private normalizeRole(role: unknown): string {
-    return `${role ?? ""}`.trim().toUpperCase()
+    return normalizeUserRole(role)
   }
 
   private isAdmin(user: any): boolean {
-    return this.normalizeRole(user?.role) === 'ADMIN'
+    return isAdminUser(user)
   }
 
   private isSalesCoordinator(user: any): boolean {
-    return this.normalizeRole(user?.role) === 'SALES_COORDINATOR'
+    return isSalesCoordinatorUser(user)
   }
 
   private canManageUsers(user: any): boolean {
-    return this.isAdmin(user) || this.isSalesCoordinator(user)
+    return canManageUsers(user)
   }
 
   private getUserBranchIds(user: any): string[] {
-    const values = [
-      `${user?.branchId ?? ""}`.trim(),
-      ...(Array.isArray(user?.branchIds) ? user.branchIds.map((branchId: unknown) => `${branchId ?? ""}`.trim()) : []),
-      ...(Array.isArray(user?.branchAssignments) ? user.branchAssignments.map((item: any) => `${item?.branchId ?? ""}`.trim()) : []),
-    ].filter(Boolean)
-
-    return [...new Set(values)]
-  }
-
-  private getManagedUserBranchIds(user: UsersResponseDTO): string[] {
-    const values = [
-      `${user.branch?.id ?? ""}`.trim(),
-      ...(Array.isArray(user.branches) ? user.branches.map((branch) => `${branch?.id ?? ""}`.trim()) : []),
-    ].filter(Boolean)
-
-    return [...new Set(values)]
+    return getUserBranchIds(user)
   }
 
   private canCoordinatorManageTarget(currentUser: any, targetUser: UsersResponseDTO): boolean {
-    if (!this.isSalesCoordinator(currentUser)) return true
-    if (this.normalizeRole(targetUser.role) !== 'VENDOR') return false
-
-    const allowedBranchIds = this.getUserBranchIds(currentUser)
-    const targetBranchIds = this.getManagedUserBranchIds(targetUser)
-
-    return targetBranchIds.length === 1 && targetBranchIds.every((branchId) => allowedBranchIds.includes(branchId))
+    return canCoordinatorManageTarget(currentUser, targetUser)
   }
 
   private filterManageableUsers(currentUser: any, users: UsersResponseDTO[]): UsersResponseDTO[] {
-    if (this.isAdmin(currentUser)) return users
-    if (!this.isSalesCoordinator(currentUser)) return []
-    return users.filter((user) => this.canCoordinatorManageTarget(currentUser, user))
+    return filterManageableUsers(currentUser, users)
   }
 
   private async getManageableTargetUser(currentUser: any, userId: string): Promise<UsersResponseDTO | null> {
