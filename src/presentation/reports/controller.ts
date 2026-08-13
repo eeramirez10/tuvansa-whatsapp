@@ -7,6 +7,8 @@ import { QuotesByBranchStatusReportDto } from '../../domain/dtos/reports/quotes-
 import { GetQuotesByBranchStatusReportUseCase } from '../../application/use-cases/reports/get-quotes-by-branch-status-report.use-case';
 import { QuotesExecutiveReportDto } from '../../domain/dtos/reports/quotes-executive-report.dto';
 import { GetQuotesExecutiveReportUseCase } from '../../application/use-cases/reports/get-quotes-executive-report.use-case';
+import { QuotesUnattendedReportDto } from '../../domain/dtos/reports/quotes-unattended-report.dto';
+import { GetQuotesUnattendedReportUseCase } from '../../application/use-cases/reports/get-quotes-unattended-report.use-case';
 
 export class ReportsController {
   constructor(private readonly reportsRepository: ReportsRepository) {}
@@ -84,8 +86,54 @@ export class ReportsController {
       });
   };
 
+  getQuotesUnattendedReport = async (req: Request, res: Response) => {
+    const user = req.body.user;
+    const [error, dto] = QuotesUnattendedReportDto.execute({ ...req.query });
+
+    if (error || !dto) {
+      res.status(400).json({ error });
+      return;
+    }
+
+    if (!this.canViewUnattendedReport(user)) {
+      res.status(403).json({ error: 'No tienes permiso para consultar este reporte' });
+      return;
+    }
+
+    if (!this.isAdmin(user)) {
+      const allowedBranchIds = this.getUserBranchIds(user);
+      if (allowedBranchIds.length === 0) {
+        res.status(403).json({ error: 'No tienes sucursales asignadas' });
+        return;
+      }
+
+      if (dto.branchId && !allowedBranchIds.includes(dto.branchId)) {
+        res.status(403).json({ error: 'No tienes permiso para consultar esa sucursal' });
+        return;
+      }
+
+      dto.branchIds = dto.branchId ? [dto.branchId] : allowedBranchIds;
+    }
+
+    try {
+      const report = await new GetQuotesUnattendedReportUseCase(this.reportsRepository)
+        .execute(dto);
+      res.json(report);
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: 'Hubo un error al consultar las cotizaciones sin atender' });
+    }
+  };
+
   private isAdmin(user: any): boolean {
     return `${user?.role ?? ''}`.toUpperCase() === UserRole.ADMIN;
+  }
+
+  private canViewUnattendedReport(user: any): boolean {
+    const role = `${user?.role ?? ''}`.toUpperCase();
+    return role === UserRole.ADMIN
+      || role === UserRole.SALES_COORDINATOR
+      || role === UserRole.BRANCH_MANAGER;
   }
 
   private getUserBranchIds(user: any): string[] {

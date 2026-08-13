@@ -10,6 +10,11 @@ import {
   QuotesExecutiveTopBranch
 } from "../../domain/dtos/reports/quotes-executive-report-response";
 import { QuotesExecutiveReportDto } from "../../domain/dtos/reports/quotes-executive-report.dto";
+import { QuotesUnattendedReportDto } from "../../domain/dtos/reports/quotes-unattended-report.dto";
+import {
+  QuotesUnattendedBranchRow,
+  QuotesUnattendedReportResponse
+} from "../../domain/dtos/reports/quotes-unattended-report-response";
 
 const prisma = new PrismaClient();
 
@@ -287,6 +292,151 @@ export class ReportsPostgresqlDataSource extends ReportsDatasource {
     };
   }
 
+  async getQuotesUnattendedReport(dto: QuotesUnattendedReportDto): Promise<QuotesUnattendedReportResponse> {
+    const generatedAt = new Date()
+    const where: Prisma.QuoteWhereInput = {
+      workflowStatus: QuoteWorkflowStatus.NEW
+    }
+
+    if (dto.branchId) {
+      where.branchId = dto.branchId
+    } else if (dto.branchIds !== undefined) {
+      where.branchId = { in: dto.branchIds }
+    }
+
+    const quotes = await prisma.quote.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        quoteNumber: true,
+        createdAt: true,
+        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            manager: {
+              select: {
+                id: true,
+                name: true,
+                lastname: true,
+                email: true,
+                phone: true
+              }
+            },
+            managerAssignments: {
+              where: {
+                user: {
+                  isActive: true,
+                  role: {
+                    in: ['BRANCH_MANAGER', 'SALES_COORDINATOR']
+                  }
+                }
+              },
+              select: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    lastname: true,
+                    email: true,
+                    phone: true,
+                    role: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            lastname: true,
+            company: true,
+            email: true,
+            phone: true
+          }
+        }
+      }
+    })
+
+    const reportByBranch = new Map<string, QuotesUnattendedBranchRow>()
+
+    for (const quote of quotes) {
+      const branchKey = quote.branchId ?? 'NO_BRANCH'
+      const ageHours = this.getAgeHours(quote.createdAt, generatedAt)
+      const assignedUsers = quote.branch?.managerAssignments.map((assignment) => assignment.user) ?? []
+      const assignedManager = assignedUsers.find((user) => user.role === 'BRANCH_MANAGER')
+        ?? assignedUsers.find((user) => user.role === 'SALES_COORDINATOR')
+      const manager = quote.branch?.manager ?? assignedManager ?? null
+
+      if (!reportByBranch.has(branchKey)) {
+        reportByBranch.set(branchKey, {
+          branchId: quote.branchId,
+          branchName: quote.branch?.name ?? 'Sin sucursal',
+          manager: manager ? {
+            id: manager.id,
+            name: manager.name,
+            lastname: manager.lastname,
+            email: manager.email,
+            phone: manager.phone
+          } : null,
+          totalNew: 0,
+          under24Hours: 0,
+          from24To72Hours: 0,
+          from3To7Days: 0,
+          over7Days: 0,
+          oldestCreatedAt: quote.createdAt,
+          oldestAgeHours: ageHours,
+          quotes: []
+        })
+      }
+
+      const branch = reportByBranch.get(branchKey)!
+      branch.totalNew += 1
+      branch.oldestAgeHours = Math.max(branch.oldestAgeHours, ageHours)
+
+      if (ageHours < 24) branch.under24Hours += 1
+      else if (ageHours < 72) branch.from24To72Hours += 1
+      else if (ageHours < 168) branch.from3To7Days += 1
+      else branch.over7Days += 1
+
+      branch.quotes.push({
+        id: quote.id,
+        quoteNumber: quote.quoteNumber,
+        createdAt: quote.createdAt,
+        ageHours,
+        customer: quote.customer
+      })
+    }
+
+    const branches = Array.from(reportByBranch.values())
+      .sort((a, b) => b.oldestAgeHours - a.oldestAgeHours || b.totalNew - a.totalNew)
+    const totalNew = branches.reduce((sum, branch) => sum + branch.totalNew, 0)
+    const olderThan24Hours = branches.reduce(
+      (sum, branch) => sum + branch.from24To72Hours + branch.from3To7Days + branch.over7Days,
+      0
+    )
+    const olderThan72Hours = branches.reduce(
+      (sum, branch) => sum + branch.from3To7Days + branch.over7Days,
+      0
+    )
+
+    return {
+      generatedAt,
+      kpis: {
+        totalNew,
+        branchesWithNew: branches.length,
+        olderThan24Hours,
+        olderThan72Hours,
+        oldestAgeHours: branches.reduce((oldest, branch) => Math.max(oldest, branch.oldestAgeHours), 0)
+      },
+      branches
+    }
+  }
+
   private buildQuoteWhere(dto: QuotesByBranchReportDto | QuotesByBranchStatusReportDto): Prisma.QuoteWhereInput {
     const where: Prisma.QuoteWhereInput = {};
 
@@ -337,6 +487,10 @@ export class ReportsPostgresqlDataSource extends ReportsDatasource {
   private toPercent(value: number, total: number): number {
     if (total <= 0) return 0;
     return Number(((value / total) * 100).toFixed(2));
+  }
+
+  private getAgeHours(createdAt: Date, now: Date): number {
+    return Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / 3_600_000))
   }
 
   private normalizeRejectType(reason?: string | null): string {

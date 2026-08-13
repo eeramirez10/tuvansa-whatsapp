@@ -14,12 +14,14 @@ export class ReportsRoutes {
     const {
       getQuotesByBranchReport,
       getQuotesByBranchStatus,
-      getQuotesExecutiveReport
+      getQuotesExecutiveReport,
+      getQuotesUnattendedReport
     } = new ReportsController(repository);
 
     router.get('/quotes/by-branch', AuthMiddleware.validateJWT, getQuotesByBranchReport);
     router.get('/quotes/by-branch-status', AuthMiddleware.validateJWT, getQuotesByBranchStatus);
     router.get('/quotes/executive-printable', AuthMiddleware.validateJWT, getQuotesExecutiveReport);
+    router.get('/quotes/unattended-by-branch', AuthMiddleware.validateJWT, getQuotesUnattendedReport);
 
     return router;
   }

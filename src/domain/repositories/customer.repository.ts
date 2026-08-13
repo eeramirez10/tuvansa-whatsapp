@@ -1,6 +1,12 @@
 import { CreateCustomerDto } from "../dtos/create-customer.dto";
 import { UpdateCustomerDto } from "../dtos/update-customer.dto";
 import { CustomerEntity } from "../entities/customer-entity";
+import {
+  CustomerDirectoryDetail,
+  CustomerDirectoryPage,
+  CustomerDirectoryScope,
+  ListCustomersDirectoryDto
+} from '../dtos/customers/customer-directory.dto';
 
 
 
@@ -20,6 +26,16 @@ export abstract class CustomerRepository {
   abstract getCustomerByQuoteNumber(quoteNumber: number): Promise<CustomerEntity | null>
 
   abstract getCustomers(): Promise<CustomerEntity[]>
+
+  abstract getDirectory(
+    dto: ListCustomersDirectoryDto,
+    scope: CustomerDirectoryScope
+  ): Promise<CustomerDirectoryPage>
+
+  abstract getDirectoryById(
+    customerId: string,
+    scope: CustomerDirectoryScope
+  ): Promise<CustomerDirectoryDetail | null>
 
   abstract findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity>
 

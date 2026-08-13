@@ -6,6 +6,8 @@ import { QuotesExecutiveReportDto } from "../../domain/dtos/reports/quotes-execu
 import { QuotesExecutiveReportResponse } from "../../domain/dtos/reports/quotes-executive-report-response";
 import { ReportsRepository } from "../../domain/repositories/reports.repository";
 import { ReportsDatasource } from '../../domain/datasource/reports.datasource';
+import { QuotesUnattendedReportDto } from '../../domain/dtos/reports/quotes-unattended-report.dto';
+import { QuotesUnattendedReportResponse } from '../../domain/dtos/reports/quotes-unattended-report-response';
 
 export class ReportsRepositoryImpl extends ReportsRepository {
   constructor(private readonly reportsDatasource: ReportsDatasource) {
@@ -22,5 +24,9 @@ export class ReportsRepositoryImpl extends ReportsRepository {
 
   getQuotesExecutiveReport(dto: QuotesExecutiveReportDto): Promise<QuotesExecutiveReportResponse> {
     return this.reportsDatasource.getQuotesExecutiveReport(dto);
+  }
+
+  getQuotesUnattendedReport(dto: QuotesUnattendedReportDto): Promise<QuotesUnattendedReportResponse> {
+    return this.reportsDatasource.getQuotesUnattendedReport(dto);
   }
 }

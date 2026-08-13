@@ -4,6 +4,8 @@ import { QuotesByBranchReportResponse } from '../dtos/reports/quotes-by-branch-r
 import { QuotesByBranchStatusReportResponse } from '../dtos/reports/quotes-by-branch-status-report-response';
 import { QuotesExecutiveReportDto } from "../dtos/reports/quotes-executive-report.dto";
 import { QuotesExecutiveReportResponse } from "../dtos/reports/quotes-executive-report-response";
+import { QuotesUnattendedReportDto } from "../dtos/reports/quotes-unattended-report.dto";
+import { QuotesUnattendedReportResponse } from "../dtos/reports/quotes-unattended-report-response";
 
 export abstract class ReportsRepository {
   abstract getQuotesByBranch(
@@ -17,4 +19,8 @@ export abstract class ReportsRepository {
   abstract getQuotesExecutiveReport(
     dto: QuotesExecutiveReportDto
   ): Promise<QuotesExecutiveReportResponse>;
+
+  abstract getQuotesUnattendedReport(
+    dto: QuotesUnattendedReportDto
+  ): Promise<QuotesUnattendedReportResponse>;
 }

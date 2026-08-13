@@ -2,6 +2,7 @@ import { Router } from "express";
 import { CustomerController } from "./controller";
 import { CustomerRepositoryImpl } from "../../infrastructure/repositories/customer.repository-impl";
 import { CustomerPostgresqlDatasource } from "../../infrastructure/datasource/customer-postgresql.datasource";
+import { AuthMiddleware } from '../middlewares/auth.middleware';
 
 
 export class CustomerRoutes {
@@ -16,8 +17,8 @@ export class CustomerRoutes {
 
     const customerController = new CustomerController(repository)
 
-    app.get('/', customerController.getCustomers )
-    app.get('/:id', customerController.getCustomer)
+    app.get('/', AuthMiddleware.validateJWT, customerController.getCustomers)
+    app.get('/:id', AuthMiddleware.validateJWT, customerController.getCustomer)
 
 
 
