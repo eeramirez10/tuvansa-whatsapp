@@ -488,14 +488,14 @@ export class WhatsAppController {
       }
     }
 
-    return res.status(200).type('text/plain').send('OK')
+    return res.sendStatus(204)
   }
 
   private respondTwilioWebhook(res: Response): Response {
     return res
       .status(200)
-      .type('text/plain')
-      .send('OK')
+      .type('text/xml')
+      .send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>')
   }
 
   private parseNumMedia(value: unknown): number {
