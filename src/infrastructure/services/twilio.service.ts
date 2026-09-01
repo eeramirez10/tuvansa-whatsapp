@@ -21,13 +21,32 @@ interface SendWhatsAppMessageOptions {
   statusCallbackUrl?: string
 }
 
+interface TwilioServiceOptions {
+  client?: twilio.Twilio
+  maxAttempts?: number
+  retryBaseDelayMs?: number
+  sleep?: (delayMs: number) => Promise<void>
+}
+
+const RETRYABLE_TWILIO_STATUSES = new Set([429, 500, 502, 503, 504])
+const DEFAULT_MAX_ATTEMPTS = 3
+const DEFAULT_RETRY_BASE_DELAY_MS = 1000
+
 export class TwilioService implements MessageService {
 
 
 
-  private client: twilio.Twilio = twilio(envs.TWILIO_ACCOUNT_SID, envs.TWILIO_AUTH_TOKEN)
+  private readonly client: twilio.Twilio
+  private readonly maxAttempts: number
+  private readonly retryBaseDelayMs: number
+  private readonly sleep: (delayMs: number) => Promise<void>
 
-  constructor() { }
+  constructor(options: TwilioServiceOptions = {}) {
+    this.client = options.client ?? twilio(envs.TWILIO_ACCOUNT_SID, envs.TWILIO_AUTH_TOKEN)
+    this.maxAttempts = Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS)
+    this.retryBaseDelayMs = Math.max(0, options.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS)
+    this.sleep = options.sleep ?? ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)))
+  }
 
 
 
@@ -44,13 +63,16 @@ export class TwilioService implements MessageService {
 
     const statusCallback = statusCallbackUrl ?? this.defaultStatusCallbackUrl()
 
-    const msg = await this.client.messages.create({
-      to: this.toWhatsAppAddress(to),
-      from: this.resolveFromAddress(from),
-      body,
-      mediaUrl: [mediaUrl],
-      statusCallback,
-    })
+    const msg = await this.createMessageWithRetry(
+      {
+        to: this.toWhatsAppAddress(to),
+        from: this.resolveFromAddress(from),
+        body,
+        mediaUrl: [mediaUrl],
+        statusCallback,
+      },
+      'media'
+    )
 
     return {
       providerMessageSid: msg.sid
@@ -208,16 +230,18 @@ export class TwilioService implements MessageService {
     const resolveFrom = this.resolveFromAddress(from)
     const statusCallback = statusCallbackUrl ?? this.defaultStatusCallbackUrl()
 
-    const message = await this.client.messages.create({
-      body: body,
-      to: this.toWhatsAppAddress(to),
-      from: resolveFrom,
-      mediaUrl: mediaUrl,
-      contentSid,
-      contentVariables,
-      statusCallback
-
-    })
+    const message = await this.createMessageWithRetry(
+      {
+        body: body,
+        to: this.toWhatsAppAddress(to),
+        from: resolveFrom,
+        mediaUrl: mediaUrl,
+        contentSid,
+        contentVariables,
+        statusCallback
+      },
+      contentSid ? 'template' : 'text'
+    )
 
     return {
       providerMessageSid: message.sid
@@ -243,6 +267,45 @@ export class TwilioService implements MessageService {
     } catch {
       return undefined
     }
+  }
+
+  private async createMessageWithRetry(
+    options: Parameters<twilio.Twilio['messages']['create']>[0],
+    messageType: string
+  ): Promise<Awaited<ReturnType<twilio.Twilio['messages']['create']>>> {
+    let attempt = 1
+
+    while (true) {
+      try {
+        return await this.client.messages.create(options)
+      } catch (error) {
+        const status = this.getHttpStatus(error)
+        const shouldRetry = status !== null &&
+          RETRYABLE_TWILIO_STATUSES.has(status) &&
+          attempt < this.maxAttempts
+
+        if (!shouldRetry) throw error
+
+        const delayMs = this.retryBaseDelayMs * (2 ** (attempt - 1))
+        console.warn('[TwilioService] Transient send failure; retrying', {
+          messageType,
+          status,
+          attempt,
+          nextAttempt: attempt + 1,
+          delayMs
+        })
+
+        await this.sleep(delayMs)
+        attempt += 1
+      }
+    }
+  }
+
+  private getHttpStatus(error: unknown): number | null {
+    if (!error || typeof error !== 'object' || !('status' in error)) return null
+
+    const status = Number((error as { status?: unknown }).status)
+    return Number.isInteger(status) ? status : null
   }
 
   private toWhatsAppAddress(phone: string): string {
