@@ -8,12 +8,13 @@ import { AddQuoteItemsUseCase } from './add-quote-items.use-case';
 
 
 interface Options {
-  name: string
-  lastname: string
-  email: string
-  phone: string
+  customerId?: string
+  name?: string
+  lastname?: string
+  email?: string
+  phone?: string
   phoneWa: string
-  location: string
+  location?: string
   items: Item[]
   fileKey?: string
   threadId?: string
@@ -42,15 +43,19 @@ export class SaveCustomerQuoteUseCase {
       branchId
     } = options
 
-    const createCustomer = await new CreateCustomerUseCase(this.customerRepository).execute({
-      name,
-      lastname,
-      email,
-      phone,
-      phoneWa,
-      location,
-      company,
-    })
+    const createCustomer = options.customerId
+      ? await this.customerRepository.getById(options.customerId)
+      : await new CreateCustomerUseCase(this.customerRepository).execute({
+        name: name!,
+        lastname: lastname!,
+        email: email!,
+        phone: phone!,
+        phoneWa,
+        location: location!,
+        company: company ?? '',
+      })
+
+    if (!createCustomer) throw new Error('Cliente no encontrado')
 
 
 

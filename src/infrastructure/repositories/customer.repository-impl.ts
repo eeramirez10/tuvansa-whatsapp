@@ -27,7 +27,7 @@ export class CustomerRepositoryImpl extends CustomerRepository {
 
 
 
-  findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity> {
+  findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity | null> {
     return this.customerDatasource.findByWhatsappPhone(phoneWa)
   }
 

@@ -6,12 +6,14 @@ import { MessageService } from '../../../domain/services/message.service'
 import { MessageRepository } from '../../../domain/repositories/message-repository'
 import { ToolCallHandlerFactory } from './tool-handlers/tool-call-handler.factory'
 import { splitWhatsAppMessage } from './whatsapp-message-chunker'
+import { WhatsAppTurnContext } from '../../../domain/interfaces/whatsapp-turn-context'
 
 interface CoreOptions {
   phoneWa: string
   question: string
   conversationId: string
   chatThreadId: string
+  context: WhatsAppTurnContext
 }
 
 const MAX_TOOL_ROUNDS = 8
@@ -25,7 +27,7 @@ export class UserQuestionCoreUseCase {
   ) { }
 
   async execute(options: CoreOptions): Promise<void> {
-    const { phoneWa, question, conversationId, chatThreadId } = options
+    const { phoneWa, question, conversationId, chatThreadId, context } = options
 
     try {
       await this.messageRepository.createUserMessage({
@@ -37,7 +39,8 @@ export class UserQuestionCoreUseCase {
       let turn = await this.openaiService.createResponse({
         conversationId,
         input: question,
-        endUserId: phoneWa
+        endUserId: phoneWa,
+        context
       })
 
       let toolRound = 0
@@ -74,7 +77,8 @@ export class UserQuestionCoreUseCase {
             },
             phoneWa,
             conversationId,
-            chatThreadId
+            chatThreadId,
+            turnContext: context
           })
 
           toolOutputs.push({
@@ -86,7 +90,8 @@ export class UserQuestionCoreUseCase {
         turn = await this.openaiService.submitToolOutputs({
           conversationId,
           toolOutputs,
-          endUserId: phoneWa
+          endUserId: phoneWa,
+          context
         })
       }
 

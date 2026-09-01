@@ -32,7 +32,7 @@ export class CustomerPostgresqlDatasource extends CustomerDatasource {
 
 
 
-  async findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity> {
+  async findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity | null> {
     return await prismaClient.customer.findUnique({
       where: {
         phoneWa

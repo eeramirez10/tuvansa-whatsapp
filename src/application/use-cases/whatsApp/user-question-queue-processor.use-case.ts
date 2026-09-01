@@ -3,8 +3,11 @@ import { LanguageModelService } from '../../../domain/services/language-model.se
 import { ChatThreadRepository } from '../../../domain/repositories/chat-thread.repository';
 import { PrismaClient } from "@prisma/client";
 import { UserQuestionCoreUseCase } from "./user-question-core.use-case";
+import { CustomerRepository } from '../../../domain/repositories/customer.repository';
+import { ResolveCustomerContextUseCase } from './resolve-customer-context.use-case';
 
 const prisma = new PrismaClient
+const FILE_REPLACEMENT_CANDIDATE_BODY = '__FILE_REPLACEMENT_CANDIDATE__'
 
 export class UserQuestionQueueProcessor {
 
@@ -12,6 +15,7 @@ export class UserQuestionQueueProcessor {
 
     private readonly openAiService: LanguageModelService,
     private readonly chatThreadRepository: ChatThreadRepository,
+    private readonly customerRepository: CustomerRepository,
     private readonly userQuestionCoreUseCase: UserQuestionCoreUseCase,
   ) { }
 
@@ -61,6 +65,7 @@ export class UserQuestionQueueProcessor {
         })
 
         let firstFileIncluded = false;
+        const pendingFile = pendings.find((pending) => pending.fileKey) ?? null;
 
         const combinedQuestion = pendings
           .map((p) => {
@@ -75,7 +80,8 @@ export class UserQuestionQueueProcessor {
               const displayFilename = originalFilename?.trim() ? originalFilename : p.fileKey;
 
               firstFileIncluded = true;
-              return `He adjuntado un archivo: ${p.fileKey}\nNombre original del archivo: ${displayFilename}`;
+              const body = p.body?.trim() ? `${p.body.trim()}\n` : '';
+              return `${body}Archivo confirmado por el cliente: ${p.fileKey}\nNombre original del archivo: ${displayFilename}`;
             }
             return p.body?.trim() || '';
           })
@@ -98,11 +104,49 @@ export class UserQuestionQueueProcessor {
         }
 
         try {
+          const replacementFileKeys = pendingFile?.fileKey
+            ? []
+            : (await prisma.pendingMessage.findMany({
+              where: {
+                chatThreadId: chatThread.id,
+                status: 'ERROR',
+                body: FILE_REPLACEMENT_CANDIDATE_BODY,
+                fileKey: { not: null }
+              },
+              select: { fileKey: true }
+            })).map((candidate) => candidate.fileKey).filter((fileKey): fileKey is string => !!fileKey)
+          const persistedFile = pendingFile?.fileKey
+            ? pendingFile
+            : await prisma.temporaryFile.findFirst({
+              where: {
+                chatThreadId: chatThread.id,
+                ...(replacementFileKeys.length > 0 ? {
+                  fileKey: { notIn: replacementFileKeys }
+                } : {})
+              },
+              orderBy: { createdAt: 'desc' },
+              select: {
+                fileKey: true,
+                originalFilename: true
+              }
+            })
+          const customerContext = await new ResolveCustomerContextUseCase(
+            this.customerRepository
+          ).execute(phoneWa)
+
           await this.userQuestionCoreUseCase.execute({
             phoneWa,
             question: combinedQuestion,
             conversationId,
-            chatThreadId: chatThread.id
+            chatThreadId: chatThread.id,
+            context: {
+              customer: customerContext,
+              attachment: persistedFile?.fileKey ? {
+                fileKey: persistedFile.fileKey,
+                originalFilename: persistedFile.originalFilename?.trim() || persistedFile.fileKey,
+                confirmed: true
+              } : null
+            }
           })
 
           await prisma.pendingMessage.updateMany({

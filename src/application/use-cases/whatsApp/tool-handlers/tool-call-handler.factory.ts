@@ -1,9 +1,8 @@
 import { ToolCallHandler } from "./tool-call-handler.interface";
-import { ExtractCustomerHandler } from "./extract-customer.handler";
 import { UpdateCustomerHandler } from "./update-customer.handler";
-import { GetInfoCustomerHandler } from "./get-info-customer.handler";
 import { GetBranchesHandler } from "./get-branches.handler";
-import { ProcessFileHandler } from "./process-file.handler";
+import { ValidateQuoteItemsHandler } from './validate-quote-items.handler';
+import { CreateQuoteRequestHandler } from './create-quote-request.handler';
 import { CustomerRepository } from '../../../../domain/repositories/customer.repository';
 import { QuoteRepository } from "../../../../domain/repositories/quote.repository";
 import { FileRepository } from "../../../../domain/repositories/file.repository";
@@ -11,9 +10,9 @@ import { ChatThreadRepository } from "../../../../domain/repositories/chat-threa
 import { BranchRepository } from "../../../../domain/repositories/branch.repository";
 import { FileStorageService } from "../../../../domain/services/file-storage.service";
 import { MessageService } from "../../../../domain/services/message.service";
-import { OpenAiFunctinsService } from "../../../../infrastructure/services/openai-functions.service";
 import { MessageRepository } from '../../../../domain/repositories/message-repository';
 import { UserRepository } from "../../../../domain/repositories/user-repository";
+import { QuoteProductValidator } from '../../../../domain/services/quote-product-validator';
 
 
 export class ToolCallHandlerFactory {
@@ -33,7 +32,6 @@ export class ToolCallHandlerFactory {
     // Services
     private readonly messageService: MessageService,
     private readonly fileStorageService: FileStorageService,
-    private readonly openAiFunctions: OpenAiFunctinsService,
   ) {
     this.initializeHandlers();
   }
@@ -42,14 +40,18 @@ export class ToolCallHandlerFactory {
    * Initialize all available handlers with their dependencies
    */
   private initializeHandlers(): void {
-    // Extract Customer Handler - most complex (quote creation + notifications)
-    const extractCustomerHandler = new ExtractCustomerHandler(
+    const validator = new QuoteProductValidator();
+    const createQuoteRequestHandler = new CreateQuoteRequestHandler(
       this.quoteRepository,
       this.customerRepository,
       this.chatThreadRepository,
+      this.branchRepository,
+      this.fileRepository,
+      this.fileStorageService,
       this.messageService,
       this.messageRepository,
-      this.userRepository
+      this.userRepository,
+      validator
     );
 
 
@@ -59,28 +61,18 @@ export class ToolCallHandlerFactory {
     );
 
 
-    const getInfoCustomerHandler = new GetInfoCustomerHandler(
-      this.customerRepository
-    );
-
-
     const getBranchesHandler = new GetBranchesHandler(
       this.branchRepository
     );
 
-
-    const processFileHandler = new ProcessFileHandler(
-      this.fileStorageService,
-      this.fileRepository
-    );
+    const validateQuoteItemsHandler = new ValidateQuoteItemsHandler(validator);
 
     // Register all handlers
     this.handlers = [
-      extractCustomerHandler,
-      updateCustomerHandler,
-      getInfoCustomerHandler,
       getBranchesHandler,
-      processFileHandler
+      validateQuoteItemsHandler,
+      updateCustomerHandler,
+      createQuoteRequestHandler
     ];
 
     console.log('[ToolCallHandlerFactory] Initialized', this.handlers.length, 'handlers');
@@ -104,11 +96,10 @@ export class ToolCallHandlerFactory {
    */
   getRegisteredHandlers(): string[] {
     return [
-      'extract_customer_info',
-      'update_customer_info',
-      'get_info_customer',
       'get_branches',
-      'process_file_for_quote'
+      'validate_quote_items',
+      'update_customer_info',
+      'create_quote_request'
     ];
   }
 }

@@ -24,16 +24,15 @@ export class SummarizeConversationUseCase {
 
     console.log("SummarizeConversationUseCase")
 
-    // if (quote.fileKey) {
+    if (quote.fileKey) {
+      summary = `El cliente adjunto el archivo ${quote.fileKey}. Revisar y procesar su contenido desde el detalle de la cotizacion.`
 
-    //   summary = "El cliente adjunto un archivo, procesar el archivo en del detalle para poder verlo"
+      updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
 
-    //   updatedQuote = await this.quoteRepository.updateQuote(quoteId, { summary })
-
-    //   return {
-    //     summary: updatedQuote.summary
-    //   }
-    // }
+      return {
+        summary: updatedQuote.summary
+      }
+    }
 
     const hoursAgo = 0.10;
 
@@ -60,4 +59,3 @@ export class SummarizeConversationUseCase {
 
   }
 }
-

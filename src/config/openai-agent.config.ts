@@ -1,36 +1,100 @@
 import type { FunctionTool } from 'openai/resources/responses/responses'
+import {
+  QUOTE_PRODUCT_FAMILIES,
+  QUOTE_PRODUCT_REQUIREMENTS_PROMPT
+} from './quote-product-requirements.config'
+import { WhatsAppTurnContext } from '../domain/interfaces/whatsapp-turn-context'
 
 export const TUVANSA_AGENT_INSTRUCTIONS = `
-Eres el asistente de ventas de TUVANSA en WhatsApp. Atiendes solicitudes de
-cotizacion de tuberia, valvulas y productos relacionados.
+Eres un asesor comercial experto y amable de TUVANSA. Hablas de manera profesional,
+cercana, humana y confiable, como un vendedor que acompana al cliente.
 
-Reglas de conversacion:
-- Responde siempre en espanol claro, profesional y breve, apropiado para WhatsApp.
-- No uses tablas Markdown ni expongas nombres de funciones, IDs internos o detalles tecnicos.
-- No inventes datos del cliente, productos, sucursales ni numeros de cotizacion.
-- Consulta get_info_customer cuando necesites saber si el cliente ya esta registrado.
-- Consulta get_branches antes de presentar o validar una sucursal. Usa el ID devuelto solo en branch_id.
-- Reune nombre, apellidos, correo, telefono, ubicacion, empresa, sucursal y productos antes de registrar una solicitud.
-- Cada producto debe incluir descripcion, cantidad y unidad de medida. EAN y codigo pueden quedar vacios si el cliente no los conoce.
-- Si el mensaje incluye la clave de un archivo adjunto, procesa el archivo con process_file_for_quote y conserva esa clave en file_key.
-- Antes de llamar extract_customer_info, resume los datos y pide confirmacion al cliente. Solo registra cuando confirme.
-- Usa update_customer_info unicamente cuando el cliente solicite cambiar datos ya registrados.
-- Tras ejecutar una herramienta, interpreta su resultado. No repitas mensajes de confirmacion que el sistema ya envio.
-- Si falta informacion, pregunta solo lo necesario para continuar.
+Reglas generales:
+- Responde siempre en espanol natural, claro y breve, apropiado para WhatsApp.
+- Puedes usar expresiones como "Con gusto te apoyo", "Vamos avanzando muy bien" y "Te acompano en el proceso", sin repetirlas mecanicamente.
+- Nunca digas que eres un sistema, asistente, IA o software.
+- No menciones catalogos, bases de datos, JSON, funciones, IDs ni procesos internos.
+- No proporciones precios, existencias, inventario ni tiempos de entrega. Ventas los enviara posteriormente.
+- No inventes datos del cliente, productos, especificaciones, sucursales ni numeros de cotizacion.
+- El CONTEXTO CONFIABLE DEL BACKEND es la fuente de verdad para saber si el cliente existe y si hay un archivo confirmado.
+
+Cliente:
+- Si el contexto indica que el cliente existe, utiliza sus datos y no vuelvas a pedirlos.
+- Si hay campos faltantes, pregunta solamente esos campos.
+- Usa el numero actual de WhatsApp como telefono, salvo que el cliente proporcione otro numero de contacto.
+- No cambies datos registrados. Usa update_customer_info solamente si el cliente pide explicitamente modificarlos.
+
+Sucursales:
+- Consulta get_branches antes de mostrar o validar una sucursal.
+- Presenta las sucursales numeradas, con el nombre en una linea y la direccion en la siguiente precedida por 📍.
+- Acepta que el cliente responda con numero o nombre, pero envia a create_quote_request el ID exacto devuelto por get_branches.
+
+Solicitudes escritas:
+- No busques productos en un catalogo y no ofrezcas EAN, codigos o alternativas no solicitadas.
+- Identifica cada familia y conserva la descripcion del cliente.
+- Pregunta solamente las propiedades minimas faltantes. Agrupa preguntas comunes cuando varios productos compartan el mismo faltante.
+- Equipo, Refaccion y Servicio no se cotizan por este canal. Tambien excluye productos ajenos al ramo y explicalo amablemente.
+- Cuando consideres completos los productos, llama validate_quote_items.
+- Si la validacion devuelve faltantes, pregunta exactamente por ellos y vuelve a validar despues.
+- Cuando la validacion sea correcta, presenta un resumen y pide confirmacion explicita.
+- Solo despues de esa confirmacion llama create_quote_request con mode TEXT y confirmation_obtained true.
+
+Archivos:
+- Nunca leas, analices, resumas ni inventes el contenido de un archivo.
+- Un archivo presente en el contexto ya fue aceptado expresamente por el cliente para generar la solicitud.
+- No vuelvas a preguntar si desea procesarlo ni llames validate_quote_items.
+- Reune solo los datos faltantes del cliente y la sucursal. Despues llama create_quote_request con mode FILE, items vacio, file_key exacto y confirmation_obtained true.
+
+Registro:
+- No llames create_quote_request sin sucursal valida ni confirmacion.
+- Tras ejecutar una herramienta, interpreta su resultado y corrige cualquier faltante.
+- No repitas mensajes de confirmacion que el backend ya haya enviado.
+
+Familias y propiedades minimas para solicitudes escritas:
+${QUOTE_PRODUCT_REQUIREMENTS_PROMPT}
 `.trim()
 
-export const TUVANSA_AGENT_TOOLS: FunctionTool[] = [
-  {
-    type: 'function',
-    name: 'get_info_customer',
-    description: 'Obtiene los datos del cliente asociado al numero de WhatsApp actual.',
-    strict: false,
-    parameters: {
-      type: 'object',
-      properties: {},
-      additionalProperties: false
+export const buildTuvansaAgentInstructions = (context: WhatsAppTurnContext): string => {
+  const trustedContext = {
+    customer: context.customer,
+    attachment: context.attachment
+  }
+
+  return `${TUVANSA_AGENT_INSTRUCTIONS}\n\nCONTEXTO CONFIABLE DEL BACKEND:\n${JSON.stringify(trustedContext)}`
+}
+
+const quoteItemSchema = {
+  type: 'object',
+  properties: {
+    family: {
+      type: 'string',
+      enum: [...QUOTE_PRODUCT_FAMILIES, 'OUT_OF_SCOPE'],
+      description: 'Familia normalizada. Usa OUT_OF_SCOPE para Equipo, Refaccion, Servicio o productos ajenos al ramo.'
+    },
+    description: {
+      type: 'string',
+      description: 'Descripcion original o consolidada del producto, sin inventar propiedades.'
+    },
+    quantity: { type: 'number' },
+    um: { type: 'string', description: 'Unidad indicada por el cliente; puede quedar vacia cuando la familia usa PIEZA o KIT.' },
+    specifications: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Clave exacta de propiedad indicada en las instrucciones.' },
+          value: { type: 'string', description: 'Valor expresamente proporcionado por el cliente.' }
+        },
+        required: ['name', 'value'],
+        additionalProperties: false
+      }
     }
   },
+  required: ['family', 'description', 'quantity', 'specifications'],
+  additionalProperties: false
+}
+
+export const TUVANSA_AGENT_TOOLS: FunctionTool[] = [
   {
     type: 'function',
     name: 'get_branches',
@@ -44,25 +108,25 @@ export const TUVANSA_AGENT_TOOLS: FunctionTool[] = [
   },
   {
     type: 'function',
-    name: 'process_file_for_quote',
-    description: 'Guarda y prepara el archivo que el cliente adjunto para incluirlo en la solicitud de cotizacion.',
+    name: 'validate_quote_items',
+    description: 'Valida en el backend las propiedades minimas de los productos escritos antes de pedir confirmacion.',
     strict: false,
     parameters: {
       type: 'object',
       properties: {
-        file_key: {
-          type: 'string',
-          description: 'Clave exacta del archivo indicada en el mensaje del usuario.'
+        items: {
+          type: 'array',
+          items: quoteItemSchema
         }
       },
-      required: ['file_key'],
+      required: ['items'],
       additionalProperties: false
     }
   },
   {
     type: 'function',
     name: 'update_customer_info',
-    description: 'Actualiza los datos de un cliente ya registrado. Envia solamente los campos proporcionados por el cliente.',
+    description: 'Actualiza datos registrados unicamente cuando el cliente solicita explicitamente un cambio.',
     strict: false,
     parameters: {
       type: 'object',
@@ -79,47 +143,28 @@ export const TUVANSA_AGENT_TOOLS: FunctionTool[] = [
   },
   {
     type: 'function',
-    name: 'extract_customer_info',
-    description: 'Registra la solicitud de cotizacion confirmada, junto con el cliente, sucursal, productos y archivo opcional.',
+    name: 'create_quote_request',
+    description: 'Registra una solicitud confirmada usando el cliente resuelto por el backend, una sucursal valida y productos o archivo.',
     strict: false,
     parameters: {
       type: 'object',
       properties: {
-        customer_name: { type: 'string', description: 'Nombre del cliente.' },
-        customer_lastname: { type: 'string', description: 'Apellidos del cliente.' },
-        email: { type: 'string', description: 'Correo electronico del cliente.' },
-        phone: { type: 'string', description: 'Telefono de contacto proporcionado por el cliente.' },
-        location: { type: 'string', description: 'Ciudad, estado o ubicacion del cliente.' },
-        company: { type: 'string', description: 'Empresa del cliente; usa cadena vacia si no aplica.' },
-        branch_id: { type: 'string', description: 'ID exacto de la sucursal elegida, obtenido con get_branches.' },
-        file_key: { type: 'string', description: 'Clave del archivo adjunto, si existe.' },
+        mode: { type: 'string', enum: ['TEXT', 'FILE'] },
+        confirmation_obtained: { type: 'boolean' },
+        customer_name: { type: 'string' },
+        customer_lastname: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        location: { type: 'string' },
+        company: { type: 'string' },
+        branch_id: { type: 'string', description: 'ID exacto obtenido con get_branches.' },
+        file_key: { type: 'string', description: 'Clave exacta del archivo confirmado cuando mode es FILE.' },
         items: {
           type: 'array',
-          description: 'Productos solicitados. Puede quedar vacio cuando el detalle completo viene en un archivo.',
-          items: {
-            type: 'object',
-            properties: {
-              description: { type: 'string' },
-              ean: { type: 'string' },
-              codigo: { type: 'string' },
-              quantity: { type: 'number' },
-              um: { type: 'string' }
-            },
-            required: ['description', 'quantity', 'um'],
-            additionalProperties: false
-          }
+          items: quoteItemSchema
         }
       },
-      required: [
-        'customer_name',
-        'customer_lastname',
-        'email',
-        'phone',
-        'location',
-        'company',
-        'branch_id',
-        'items'
-      ],
+      required: ['mode', 'confirmation_obtained', 'branch_id', 'items'],
       additionalProperties: false
     }
   }

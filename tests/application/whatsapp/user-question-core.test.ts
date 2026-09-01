@@ -12,17 +12,37 @@ test('ejecuta herramientas de Responses y envia la respuesta final por WhatsApp'
   const sentMessages: unknown[] = []
   let submittedOutputs: unknown
   let handlerContext: any
+  let createResponseOptions: any
+  const turnContext = {
+    customer: {
+      exists: true,
+      customer: {
+        id: 'customer-1',
+        name: 'Erick',
+        lastname: 'Ramirez',
+        email: 'erick@example.com',
+        phone: '5215555555555',
+        location: 'Monterrey',
+        company: 'TUVANSA'
+      },
+      missingFields: []
+    },
+    attachment: null
+  }
 
   const languageModel = {
-    createResponse: async () => ({
-      responseId: 'resp_1',
-      outputText: '',
-      toolCalls: [{
-        callId: 'call_1',
-        name: 'get_branches',
-        arguments: '{}'
-      }]
-    }),
+    createResponse: async (options: unknown) => {
+      createResponseOptions = options
+      return {
+        responseId: 'resp_1',
+        outputText: '',
+        toolCalls: [{
+          callId: 'call_1',
+          name: 'get_branches',
+          arguments: '{}'
+        }]
+      }
+    },
     submitToolOutputs: async (options: unknown) => {
       submittedOutputs = options
       return {
@@ -70,14 +90,18 @@ test('ejecuta herramientas de Responses y envia la respuesta final por WhatsApp'
     phoneWa: '5215555555555',
     question: 'Quiero cotizar una valvula',
     conversationId: 'conv_1',
-    chatThreadId: 'chat-1'
+    chatThreadId: 'chat-1',
+    context: turnContext
   })
 
+  assert.deepEqual(createResponseOptions.context, turnContext)
   assert.equal(handlerContext.conversationId, 'conv_1')
+  assert.deepEqual(handlerContext.turnContext, turnContext)
   assert.equal(handlerContext.action.function.name, 'get_branches')
   assert.deepEqual(submittedOutputs, {
     conversationId: 'conv_1',
     endUserId: '5215555555555',
+    context: turnContext,
     toolOutputs: [{
       callId: 'call_1',
       output: '[{"id":"branch-1","name":"Monterrey"}]'

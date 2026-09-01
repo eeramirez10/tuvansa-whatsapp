@@ -21,7 +21,6 @@ import path from "path";
 import url from "url";
 import { BranchRepository } from '../../domain/repositories/branch.repository';
 import { ToolCallHandlerFactory } from '../../application/use-cases/whatsApp/tool-handlers/tool-call-handler.factory';
-import { OpenAiFunctinsService } from '../../infrastructure/services/openai-functions.service';
 import { MessageRepository } from '../../domain/repositories/message-repository';
 import { UpdateQuoteWorkflowDto } from "../../domain/dtos/quotes/update-quote-workflow.dto";
 import { UpdateQuoteWorkflowUseCase } from "../../application/use-cases/quotes/update-quote-workflow.use-case";
@@ -45,6 +44,7 @@ const prisma = new PrismaClient
 
 const ACCEPTED_FORMATS = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/pdf']
 const FILE_REPLACEMENT_CANDIDATE_BODY = '__FILE_REPLACEMENT_CANDIDATE__'
+const FILE_QUOTE_CONFIRMATION_BODY = '__FILE_QUOTE_CONFIRMATION__'
 
 const debounceTimers = new Map<string, NodeJS.Timeout>
 
@@ -155,49 +155,38 @@ export class WhatsAppController {
           const normalizedBody = this.normalizeIncomingText(body)
 
           if (this.isAffirmativeReplacement(normalizedBody)) {
-            const activePendingFile = await prisma.pendingMessage.findFirst({
+            const activeTemporaryFile = await prisma.temporaryFile.findFirst({
               where: {
                 chatThreadId: chatThread.id,
-                fileKey: {
-                  not: null
-                },
-                status: {
-                  in: ['PENDING', 'PROCESSING']
-                }
+                fileKey: { not: replacementCandidate.fileKey }
               },
               select: {
                 id: true,
                 fileKey: true,
                 originalFilename: true
               },
-              orderBy: {
-                createdAt: 'desc'
-              }
+              orderBy: { createdAt: 'asc' }
             })
 
-            if (activePendingFile) {
-              await prisma.pendingMessage.update({
-                where: { id: activePendingFile.id },
-                data: { status: 'ERROR' }
+            if (activeTemporaryFile) {
+              await prisma.pendingMessage.deleteMany({
+                where: {
+                  chatThreadId: chatThread.id,
+                  fileKey: activeTemporaryFile.fileKey
+                }
               })
-
-              await this.deleteTemporaryFileByKey(activePendingFile.fileKey)
+              await this.deleteTemporaryFileByKey(activeTemporaryFile.fileKey)
             }
 
             await this.clearReplacementCandidates(chatThread.id, replacementCandidate.fileKey)
 
-            await prisma.pendingMessage.create({
-              data: {
-                chatThreadId: chatThread.id,
-                body: null,
-                fileKey: replacementCandidate.fileKey,
-                originalFilename: replacementCandidate.originalFilename ?? replacementCandidate.fileKey
-              }
-            })
-
-            await prisma.pendingMessage.delete({
+            await prisma.pendingMessage.update({
               where: {
                 id: replacementCandidate.id
+              },
+              data: {
+                body: FILE_QUOTE_CONFIRMATION_BODY,
+                status: 'ERROR'
               }
             })
 
@@ -205,7 +194,7 @@ export class WhatsAppController {
               replacementCandidate.fileKey,
               replacementCandidate.originalFilename
             )
-            const confirmationMessage = `Perfecto, usaré el archivo "${candidateName}" para tu cotización.`
+            const confirmationMessage = `Perfecto, reemplazare el archivo anterior por "${candidateName}". ¿Deseas generar una solicitud de cotizacion con este archivo?`
             await this.messageService.createWhatsAppMessage({
               body: confirmationMessage,
               to: WaId
@@ -216,7 +205,6 @@ export class WhatsAppController {
               to: WaId
             })
 
-            this.scheduleProcessing(WaId)
             return this.respondTwilioWebhook(res)
           }
 
@@ -252,6 +240,64 @@ export class WhatsAppController {
             to: WaId
           })
 
+          return this.respondTwilioWebhook(res)
+        }
+
+        const fileAwaitingConfirmation = await prisma.pendingMessage.findFirst({
+          where: {
+            chatThreadId: chatThread.id,
+            status: 'ERROR',
+            body: FILE_QUOTE_CONFIRMATION_BODY,
+            fileKey: { not: null }
+          },
+          select: {
+            id: true,
+            fileKey: true,
+            originalFilename: true
+          },
+          orderBy: { createdAt: 'desc' }
+        })
+
+        if (fileAwaitingConfirmation?.fileKey) {
+          const normalizedBody = this.normalizeIncomingText(body)
+          const displayFilename = this.resolveDisplayFilename(
+            fileAwaitingConfirmation.fileKey,
+            fileAwaitingConfirmation.originalFilename
+          )
+
+          if (this.isAffirmativeFileConfirmation(normalizedBody)) {
+            await prisma.pendingMessage.update({
+              where: { id: fileAwaitingConfirmation.id },
+              data: {
+                status: 'PENDING',
+                body: `El cliente confirmo que desea generar la solicitud con el archivo. Mensaje de confirmacion: ${body}`
+              }
+            })
+            this.scheduleProcessing(WaId)
+            return this.respondTwilioWebhook(res)
+          }
+
+          if (this.isNegativeFileConfirmation(normalizedBody)) {
+            await this.deleteTemporaryFileByKey(fileAwaitingConfirmation.fileKey)
+            await prisma.pendingMessage.delete({ where: { id: fileAwaitingConfirmation.id } })
+
+            const cancelledMessage = `Entendido, no generare una solicitud con el archivo "${displayFilename}". Puedes enviarme otro archivo o escribir los materiales que deseas cotizar.`
+            await this.messageService.createWhatsAppMessage({ body: cancelledMessage, to: WaId })
+            await this.messageRepository.createAssistantMessage({
+              content: cancelledMessage,
+              chatThreadId: chatThread.id,
+              to: WaId
+            })
+            return this.respondTwilioWebhook(res)
+          }
+
+          const reminderMessage = `Tengo pendiente el archivo "${displayFilename}". ¿Deseas generar una solicitud de cotizacion con este archivo? Responde SI o NO.`
+          await this.messageService.createWhatsAppMessage({ body: reminderMessage, to: WaId })
+          await this.messageRepository.createAssistantMessage({
+            content: reminderMessage,
+            chatThreadId: chatThread.id,
+            to: WaId
+          })
           return this.respondTwilioWebhook(res)
         }
 
@@ -298,26 +344,30 @@ export class WhatsAppController {
           filename
         );
 
-        const activePendingFile = await prisma.pendingMessage.findFirst({
+        const replacementFileKeys = (await prisma.pendingMessage.findMany({
           where: {
             chatThreadId: chatThread.id,
-            fileKey: {
-              not: null
-            },
-            status: {
-              in: ['PENDING', 'PROCESSING']
-            }
+            status: 'ERROR',
+            body: FILE_REPLACEMENT_CANDIDATE_BODY,
+            fileKey: { not: null }
+          },
+          select: { fileKey: true }
+        })).map((candidate) => candidate.fileKey).filter((fileKey): fileKey is string => !!fileKey)
+
+        const activePendingFile = await prisma.temporaryFile.findFirst({
+          where: {
+            chatThreadId: chatThread.id,
+            ...(replacementFileKeys.length > 0 ? {
+              fileKey: { notIn: replacementFileKeys }
+            } : {})
           },
           select: {
             id: true,
-            status: true,
             fileKey: true,
             originalFilename: true,
             updatedAt: true
           },
-          orderBy: {
-            createdAt: 'desc'
-          }
+          orderBy: { createdAt: 'asc' }
         })
 
         if (activePendingFile?.fileKey === filename) {
@@ -328,16 +378,16 @@ export class WhatsAppController {
         if (activePendingFile) {
           const now = Date.now();
           const updatedAtMs = activePendingFile.updatedAt.getTime();
-          const staleThresholdMs = activePendingFile.status === 'PROCESSING'
-            ? 15 * 60 * 1000
-            : 30 * 60 * 1000;
+          const staleThresholdMs = 24 * 60 * 60 * 1000;
           const isStale = now - updatedAtMs > staleThresholdMs;
 
           if (isStale) {
             console.warn('[WhatsAppController] Releasing stale pending file:', activePendingFile.id);
-            await prisma.pendingMessage.update({
-              where: { id: activePendingFile.id },
-              data: { status: 'ERROR' }
+            await prisma.pendingMessage.deleteMany({
+              where: {
+                chatThreadId: chatThread.id,
+                fileKey: activePendingFile.fileKey
+              }
             })
             await this.deleteTemporaryFileByKey(activePendingFile.fileKey)
           } else {
@@ -426,14 +476,20 @@ export class WhatsAppController {
         await prisma.pendingMessage.create({
           data: {
             chatThreadId: chatThread.id,
-            body: null,
+            body: FILE_QUOTE_CONFIRMATION_BODY,
             fileKey: filename,
-            originalFilename: resolvedOriginalFilename
+            originalFilename: resolvedOriginalFilename,
+            status: 'ERROR'
           }
         })
 
-
-        this.scheduleProcessing(WaId)
+        const receivedMessage = `Recibi el archivo "${resolvedOriginalFilename}". ¿Deseas generar una solicitud de cotizacion con este archivo? Responde SI o NO.`
+        await this.messageService.createWhatsAppMessage({ body: receivedMessage, to: WaId })
+        await this.messageRepository.createAssistantMessage({
+          content: receivedMessage,
+          chatThreadId: chatThread.id,
+          to: WaId
+        })
 
         return this.respondTwilioWebhook(res)
 
@@ -1355,6 +1411,32 @@ export class WhatsAppController {
     return false
   }
 
+  private isAffirmativeFileConfirmation = (normalizedText: string): boolean => {
+    const exactMatches = new Set([
+      'si',
+      'ok',
+      'va',
+      'dale',
+      'adelante',
+      'confirmo',
+      'si generar',
+      'genera la cotizacion',
+      'generar cotizacion'
+    ])
+    return exactMatches.has(normalizedText) || normalizedText.startsWith('si ')
+  }
+
+  private isNegativeFileConfirmation = (normalizedText: string): boolean => {
+    const exactMatches = new Set([
+      'no',
+      'cancelar',
+      'cancela',
+      'no generar',
+      'no gracias'
+    ])
+    return exactMatches.has(normalizedText) || normalizedText.startsWith('no ')
+  }
+
   private deleteTemporaryFileByKey = async (fileKey?: string | null): Promise<void> => {
     if (!fileKey) return
 
@@ -1460,7 +1542,6 @@ export class WhatsAppController {
     const timer = setTimeout(() => {
 
       // Create factory with all dependencies
-      const openAiFunctions = new OpenAiFunctinsService();
       const toolCallHandlerFactory = new ToolCallHandlerFactory(
         this.customerRepository,
         this.quoteRepository,
@@ -1471,7 +1552,6 @@ export class WhatsAppController {
         this.messageRepository,
         this.messageService,
         this.fileStorageService,
-        openAiFunctions,
 
       );
 
@@ -1486,6 +1566,7 @@ export class WhatsAppController {
       new UserQuestionQueueProcessor(
         this.openAIService,
         this.chatThreadRepository,
+        this.customerRepository,
         userQuestionCore
       ).execute(phoneWa)
         .catch((err) => console.error('[QueueProcessor error]', err));

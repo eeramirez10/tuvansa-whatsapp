@@ -5,6 +5,7 @@ interface Option {
   readonly originalFilename?: string | null
   readonly buffer: Uint8Array<ArrayBuffer>
   readonly mimeType: string
+  readonly chatThreadId: string
 }
 
 export class FindFileByKeyResponseDTO {
@@ -14,6 +15,7 @@ export class FindFileByKeyResponseDTO {
   readonly originalFilename?: string | null
   readonly buffer: Uint8Array<ArrayBuffer>
   readonly mimeType: string
+  readonly chatThreadId: string
 
   constructor(options: Option) {
     this.id = options.id
@@ -21,6 +23,7 @@ export class FindFileByKeyResponseDTO {
     this.originalFilename = options.originalFilename
     this.buffer = options.buffer
     this.mimeType = options.mimeType
+    this.chatThreadId = options.chatThreadId
   }
 
 }

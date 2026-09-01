@@ -1,8 +1,11 @@
+import { WhatsAppTurnContext } from '../../../../domain/interfaces/whatsapp-turn-context'
+
 export interface ToolCallContext {
   action: any;
   phoneWa: string;
   conversationId: string;
   chatThreadId: string;
+  turnContext: WhatsAppTurnContext;
 }
 
 export interface ToolCallOutput {

@@ -8,7 +8,7 @@ import type {
 } from 'openai/resources/responses/responses'
 import { envs } from '../../config/envs'
 import {
-  TUVANSA_AGENT_INSTRUCTIONS,
+  buildTuvansaAgentInstructions,
   TUVANSA_AGENT_TOOLS
 } from '../../config/openai-agent.config'
 import {
@@ -17,6 +17,7 @@ import {
   LanguageModelToolOutput,
   LanguageModelTurn
 } from '../../domain/services/language-model.service'
+import { WhatsAppTurnContext } from '../../domain/interfaces/whatsapp-turn-context'
 
 const MAX_IMPORTED_MESSAGES = 20
 type OpenAIClient = Pick<OpenAI, 'conversations' | 'responses'>
@@ -51,12 +52,13 @@ export class OpenAIService implements LanguageModelService {
     conversationId: string
     input: string
     endUserId: string
+    context: WhatsAppTurnContext
   }): Promise<LanguageModelTurn> {
     const response = await this.openai.responses.create({
       model: envs.OPENAI_MODEL as ResponsesModel,
       conversation: options.conversationId,
       input: options.input,
-      instructions: TUVANSA_AGENT_INSTRUCTIONS,
+      instructions: buildTuvansaAgentInstructions(options.context),
       tools: TUVANSA_AGENT_TOOLS,
       tool_choice: 'auto',
       parallel_tool_calls: false,
@@ -71,6 +73,7 @@ export class OpenAIService implements LanguageModelService {
     conversationId: string
     toolOutputs: LanguageModelToolOutput[]
     endUserId: string
+    context: WhatsAppTurnContext
   }): Promise<LanguageModelTurn> {
     const input: ResponseInputItem[] = options.toolOutputs.map((toolOutput) => ({
       type: 'function_call_output',
@@ -82,7 +85,7 @@ export class OpenAIService implements LanguageModelService {
       model: envs.OPENAI_MODEL as ResponsesModel,
       conversation: options.conversationId,
       input,
-      instructions: TUVANSA_AGENT_INSTRUCTIONS,
+      instructions: buildTuvansaAgentInstructions(options.context),
       tools: TUVANSA_AGENT_TOOLS,
       tool_choice: 'auto',
       parallel_tool_calls: false,

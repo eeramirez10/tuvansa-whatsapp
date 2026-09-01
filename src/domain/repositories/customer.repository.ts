@@ -37,6 +37,6 @@ export abstract class CustomerRepository {
     scope: CustomerDirectoryScope
   ): Promise<CustomerDirectoryDetail | null>
 
-  abstract findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity>
+  abstract findByWhatsappPhone(phoneWa: string): Promise<CustomerEntity | null>
 
 }

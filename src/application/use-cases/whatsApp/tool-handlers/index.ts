@@ -15,8 +15,7 @@ export { ToolCallHandler, ToolCallContext } from './tool-call-handler.interface'
 export { ToolCallHandlerFactory } from './tool-call-handler.factory';
 
 // Function handlers
-export { ExtractCustomerHandler } from './extract-customer.handler';
 export { UpdateCustomerHandler } from './update-customer.handler';
-export { GetInfoCustomerHandler } from './get-info-customer.handler';
 export { GetBranchesHandler } from './get-branches.handler';
-export { ProcessFileHandler } from './process-file.handler';
+export { ValidateQuoteItemsHandler } from './validate-quote-items.handler';
+export { CreateQuoteRequestHandler } from './create-quote-request.handler';
