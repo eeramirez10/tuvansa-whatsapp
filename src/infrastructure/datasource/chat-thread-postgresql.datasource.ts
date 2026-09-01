@@ -189,6 +189,23 @@ export class ChatThreadPostgresqlDatasource extends ChatThreadDatasource {
     })
   }
 
+  async updateExternalConversationId(chatThreadId: string, conversationId: string): Promise<ChatThreadEntity> {
+    return prismaClient.chatThread.update({
+      where: { id: chatThreadId },
+      data: { openAiThreadId: conversationId }
+    })
+  }
+
+  async getRecentMessages(chatThreadId: string, limit: number): Promise<MessageEntity[]> {
+    const messages = await prismaClient.message.findMany({
+      where: { chatThreadId },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    })
+
+    return messages.reverse()
+  }
+
 
 
   private async updateLastInteraction(threadId: string) {

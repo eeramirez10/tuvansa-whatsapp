@@ -2,7 +2,11 @@ import dotenv from 'dotenv'
 import { get } from 'env-var'
 
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
-dotenv.config({ path: envFile })
+const envResult = dotenv.config({ path: envFile })
+
+for (const [key, value] of Object.entries(envResult.parsed ?? {})) {
+  if (!process.env[key]?.trim()) process.env[key] = value
+}
 
 const isProduction = process.env.NODE_ENV === 'production'
 const apiUrl = isProduction
@@ -15,6 +19,7 @@ export const envs = {
   TWILIO_ACCOUNT_SID: get('TWILIO_ACCOUNT_SID').required().asString(),
   TWILIO_AUTH_TOKEN: get('TWILIO_AUTH_TOKEN').required().asString(),
   OPEN_API_KEY: get('OPEN_API_KEY').required().asString(),
+  OPENAI_MODEL: get('OPENAI_MODEL').default('gpt-5.6-luna').asString(),
   EMAIL_ACCOUNT: get('EMAIL_ACCOUNT').required().asString(),
   EMAIL_PASSWORD: get('EMAIL_PASSWORD').required().asString(),
   MAIL_SERVICE: get('MAIL_SERVICE').asString(),

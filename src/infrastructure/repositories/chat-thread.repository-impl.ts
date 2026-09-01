@@ -65,6 +65,14 @@ export class ChatThreadRepositoryImpl extends ChatThreadRepository {
     return this.chatThreadDatasource.setProcessing(chatThreadId, isProcessing)
   }
 
+  updateExternalConversationId(chatThreadId: string, conversationId: string): Promise<ChatThreadEntity> {
+    return this.chatThreadDatasource.updateExternalConversationId(chatThreadId, conversationId)
+  }
+
+  getRecentMessages(chatThreadId: string, limit: number): Promise<MessageEntity[]> {
+    return this.chatThreadDatasource.getRecentMessages(chatThreadId, limit)
+  }
+
 
 
 }

@@ -1,149 +1,126 @@
-import { LanguageModelService } from "../../../domain/services/language-model.service";
-import { MessageService } from "../../../domain/services/message.service";
-import { ToolCallHandlerFactory } from './tool-handlers/tool-call-handler.factory';
-import { StreamMessageProcessor } from './tool-handlers/stream-message-processor';
-import { MessageRepository } from '../../../domain/repositories/message-repository';
-
-
+import {
+  LanguageModelService,
+  LanguageModelToolOutput
+} from '../../../domain/services/language-model.service'
+import { MessageService } from '../../../domain/services/message.service'
+import { MessageRepository } from '../../../domain/repositories/message-repository'
+import { ToolCallHandlerFactory } from './tool-handlers/tool-call-handler.factory'
+import { splitWhatsAppMessage } from './whatsapp-message-chunker'
 
 interface CoreOptions {
-  phoneWa: string;
-  question: string;
-  threadId: string;
-  chatThreadId: string;
-
+  phoneWa: string
+  question: string
+  conversationId: string
+  chatThreadId: string
 }
 
-
-export type FunctionNameType = 'extract_customer_info' | 'update_customer_info' | 'get_info_customer' | 'get_branches' | 'process_file_for_quote';
+const MAX_TOOL_ROUNDS = 8
 
 export class UserQuestionCoreUseCase {
-
   constructor(
     public readonly openaiService: LanguageModelService,
     private readonly messageService: MessageService,
     private readonly toolCallHandlerFactory: ToolCallHandlerFactory,
     private readonly messageRepository: MessageRepository
-
   ) { }
 
-
-  async execute(options: CoreOptions) {
-
-
-    let usedGetInfoCustomer = false
-
-    const { phoneWa, question, threadId, chatThreadId } = options
-
+  async execute(options: CoreOptions): Promise<void> {
+    const { phoneWa, question, conversationId, chatThreadId } = options
 
     try {
-
-
       await this.messageRepository.createUserMessage({
         content: question,
         chatThreadId,
         from: phoneWa
       })
 
+      let turn = await this.openaiService.createResponse({
+        conversationId,
+        input: question,
+        endUserId: phoneWa
+      })
 
-      await this.openaiService.createMessage({ threadId, question })
+      let toolRound = 0
 
-      const runStream = await this.openaiService.startRunStream({ threadId, assistantId: 'asst_zH28urJes1YILRhYUZrjjakE' })
-
-      const { runId, stream } = runStream;
-
-      // Process stream using StreamMessageProcessor
-      const streamProcessor = new StreamMessageProcessor(
-        this.messageService,
-        chatThreadId,
-        phoneWa
-      );
-      await streamProcessor.processStream(stream);
-
-
-
-
-
-      while (true) {
-        const runstatus = await this.openaiService.checkStatus(threadId, runId);
-        if (runstatus.status === 'completed') break;
-
-        if (runstatus.status === 'requires_action') {
-          const requiredAction = runstatus.required_action?.submit_tool_outputs.tool_calls;
-          if (!requiredAction) break;
-
-          const tool_outputs = await Promise.all(
-            requiredAction.map(async (action) => {
-              const functionName: FunctionNameType = action.function.name as FunctionNameType;
-              console.log('[UserQuestionCoreUseCase] Processing function:', functionName);
-              const handler = this.toolCallHandlerFactory.getHandler(functionName);
-              if (!handler) {
-                console.warn('[UserQuestionCoreUseCase] No handler found for:', functionName);
-                return { tool_call_id: action.id, output: '{success: false, error: "Handler not found"}' };
-              }
-              if ([
-                'get_info_customer',
-                'update_customer_info',
-                'get_branches',
-                'process_file_for_quote'
-              ].includes(functionName)) {
-                usedGetInfoCustomer = true;
-              }
-              return await handler.execute({ action, phoneWa, threadId, chatThreadId });
-            })
-          );
-
-          await this.openaiService.submitToolOutputs(
-            runstatus.thread_id,
-            runstatus.id,
-            tool_outputs,
-          );
+      while (turn.toolCalls.length > 0) {
+        toolRound += 1
+        if (toolRound > MAX_TOOL_ROUNDS) {
+          throw new Error(`OpenAI exceeded ${MAX_TOOL_ROUNDS} tool-call rounds`)
         }
-        await new Promise((resolve) => setTimeout(resolve, 3500));
-      }
 
-      // Obtener y enviar respuesta final del asistente si usó get_info_customer
-      const text = await this.getLastConversationAsistant(threadId)
+        const toolOutputs: LanguageModelToolOutput[] = []
 
-      console.log({ text })
+        for (const toolCall of turn.toolCalls) {
+          const handler = this.toolCallHandlerFactory.getHandler(toolCall.name)
 
-      if (text && usedGetInfoCustomer) {
-        await this.messageService.createWhatsAppMessage({
-          to: phoneWa,
-          body: text,
-        });
+          if (!handler) {
+            toolOutputs.push({
+              callId: toolCall.callId,
+              output: JSON.stringify({
+                success: false,
+                error: `Unsupported tool: ${toolCall.name}`
+              })
+            })
+            continue
+          }
 
-        await this.messageRepository.createAssistantMessage({
-          content: text,
-          chatThreadId,
-          to: phoneWa,
+          const result = await handler.execute({
+            action: {
+              id: toolCall.callId,
+              function: {
+                name: toolCall.name,
+                arguments: toolCall.arguments
+              }
+            },
+            phoneWa,
+            conversationId,
+            chatThreadId
+          })
+
+          toolOutputs.push({
+            callId: toolCall.callId,
+            output: result.output
+          })
+        }
+
+        turn = await this.openaiService.submitToolOutputs({
+          conversationId,
+          toolOutputs,
+          endUserId: phoneWa
         })
-
       }
 
-
+      if (turn.outputText) {
+        await this.sendAssistantResponse({
+          content: turn.outputText,
+          phoneWa,
+          chatThreadId
+        })
+      }
     } catch (error) {
-
-      console.log(error)
-
-      throw new Error('[UserQuestionCore]error')
-
+      console.error('[UserQuestionCoreUseCase]', error)
+      throw new Error('[UserQuestionCore] error', { cause: error })
     }
-
   }
 
-  private async getLastConversationAsistant(threadId: string) {
+  private async sendAssistantResponse(options: {
+    content: string
+    phoneWa: string
+    chatThreadId: string
+  }): Promise<void> {
+    for (const content of splitWhatsAppMessage(options.content)) {
+      const result = await this.messageService.createWhatsAppMessage({
+        to: options.phoneWa,
+        body: content
+      })
 
-    const messages = await this.openaiService.getMessageList(threadId);
-
-    // Ajusta esto según el shape que te regrese getMessageList
-
-    const ordered = [...messages].sort((a, b) => a.created_at - b.created_at)
-    const lastAssistant = ordered.filter((data) => data.role === 'assistant').at(-1)
-
-
-
-    return lastAssistant.content[0]
-
+      await this.messageRepository.createAssistantMessage({
+        content,
+        chatThreadId: options.chatThreadId,
+        to: options.phoneWa,
+        providerMessageId: result.providerMessageSid,
+        status: 'QUEUED'
+      })
+    }
   }
 }

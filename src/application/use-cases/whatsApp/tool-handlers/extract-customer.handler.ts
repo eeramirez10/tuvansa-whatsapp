@@ -32,7 +32,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
   }
 
   async execute(context: ToolCallContext): Promise<ToolCallOutput> {
-    const { phoneWa, threadId, chatThreadId, action } = context;
+    const { phoneWa, conversationId, chatThreadId, action } = context;
 
     try {
       
@@ -87,7 +87,7 @@ export class ExtractCustomerHandler implements ToolCallHandler {
 
       // Vincular cliente con chat thread
       const chatThread = await this.chatThreadRepository.addCustomer(
-        threadId,
+        conversationId,
         this.newCustomerQuote!.customerId
       );
 

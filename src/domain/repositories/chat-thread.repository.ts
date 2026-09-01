@@ -30,5 +30,9 @@ export abstract class ChatThreadRepository {
 
   abstract findByPhone(phoneWa: string): Promise<ChatThreadEntity | null> 
 
+  abstract updateExternalConversationId(chatThreadId: string, conversationId: string): Promise<ChatThreadEntity>
+
+  abstract getRecentMessages(chatThreadId: string, limit: number): Promise<MessageEntity[]>
+
 
 }

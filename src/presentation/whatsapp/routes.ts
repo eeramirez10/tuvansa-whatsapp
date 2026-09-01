@@ -35,7 +35,7 @@ export class WhatsAppRoutes {
     const chatThreadRepositoryImpl = new ChatThreadRepositoryImpl(new ChatThreadPostgresqlDatasource())
     const quoteRepositoryImpl = new QuoteRepositoryImpl(new QuotePostgresqlDatasource())
     const customerRepositoryImpl = new CustomerRepositoryImpl(new CustomerPostgresqlDatasource())
-    const openAiService = new OpenAIService(new TwilioService())
+    const openAiService = new OpenAIService()
     const s3FileStorageService = new S3FileStorageService()
     const fileRepositoryImpl = new FileRepositoryImpl(new FilePostgresqlDataSource());
     const branchRepository = new BranchRepositoryImpl(new BranchPostgresqlDatasource())

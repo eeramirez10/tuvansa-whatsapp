@@ -1,45 +1,37 @@
-import OpenAI from "openai";
+export interface ConversationHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
 
-export abstract class LanguageModelService  {
+export interface LanguageModelToolCall {
+  callId: string
+  name: string
+  arguments: string
+}
 
-  abstract createThread(): Promise<string>
+export interface LanguageModelToolOutput {
+  callId: string
+  output: string
+}
 
+export interface LanguageModelTurn {
+  responseId: string
+  outputText: string
+  toolCalls: LanguageModelToolCall[]
+}
 
-  abstract createMessage({ threadId, question }: { threadId: string, question: string }): Promise<OpenAI.Beta.Threads.Messages.Message & {
-    _request_id?: string | null;
-}>
+export abstract class LanguageModelService {
+  abstract createConversation(history?: ConversationHistoryMessage[]): Promise<string>
 
-  abstract createRun({ threadId, assistantId }: { threadId: string, assistantId?: string }): Promise<OpenAI.Beta.Threads.Runs.Run & {
-    _request_id?: string | null;
-}>
+  abstract createResponse(options: {
+    conversationId: string
+    input: string
+    endUserId: string
+  }): Promise<LanguageModelTurn>
 
-
-
-  abstract checkStatus(threadId: string, runId: string):  Promise<OpenAI.Beta.Threads.Runs.Run & {
-    _request_id?: string | null;
-}>
-
-  abstract submitToolOutputs(threadId: string, runId: string, toolOutputs: OpenAI.Beta.Threads.Runs.RunSubmitToolOutputsParams.ToolOutput[]): Promise<OpenAI.Beta.Threads.Runs.Run & {
-    _request_id?: string | null;
-}>
-
-  abstract getMessageList(threadId: string): Promise<{
-    role: "user" | "assistant";
-    content: any[];
-    created_at: number
-  }[]>
-
-  abstract  streamMessageToWhatsApp(options: {
-    threadId: string;
-    question: any[];
-    to: string;
-    assistantId?: string;  
-    chunkSize?: number;
-  })
-
-  abstract startRunStream(opts: { threadId: string; assistantId?: string })
-
-
-
-
+  abstract submitToolOutputs(options: {
+    conversationId: string
+    toolOutputs: LanguageModelToolOutput[]
+    endUserId: string
+  }): Promise<LanguageModelTurn>
 }

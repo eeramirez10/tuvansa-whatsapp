@@ -31,4 +31,8 @@ export abstract class ChatThreadDatasource {
   abstract setProcessing(chatThreadId: string, isProcessing: boolean): Promise<void>
 
   abstract findByPhone(phoneWa: string): Promise<ChatThreadEntity | null> 
+
+  abstract updateExternalConversationId(chatThreadId: string, conversationId: string): Promise<ChatThreadEntity>
+
+  abstract getRecentMessages(chatThreadId: string, limit: number): Promise<MessageEntity[]>
 }

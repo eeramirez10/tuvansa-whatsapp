@@ -50,7 +50,7 @@
     "ext-name": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.10.0",
-    "openai": "^4.85.4",
+    "openai": "^7.8.0",
     "puppeteer": "^24.26.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

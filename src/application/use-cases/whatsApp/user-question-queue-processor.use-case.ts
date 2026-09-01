@@ -18,7 +18,7 @@ export class UserQuestionQueueProcessor {
 
   async execute(phoneWa: string) {
 
-    const { chatThread, threadId } = await
+    const { chatThread, conversationId } = await
       new EnsureChatThreadForPhoneUseCase
         (
           this.openAiService,
@@ -101,7 +101,7 @@ export class UserQuestionQueueProcessor {
           await this.userQuestionCoreUseCase.execute({
             phoneWa,
             question: combinedQuestion,
-            threadId,
+            conversationId,
             chatThreadId: chatThread.id
           })
 

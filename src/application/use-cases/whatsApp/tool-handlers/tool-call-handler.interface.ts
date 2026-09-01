@@ -1,7 +1,7 @@
 export interface ToolCallContext {
   action: any;
   phoneWa: string;
-  threadId: string;
+  conversationId: string;
   chatThreadId: string;
 }
 

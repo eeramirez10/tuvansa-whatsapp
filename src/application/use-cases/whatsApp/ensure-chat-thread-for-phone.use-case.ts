@@ -1,11 +1,11 @@
 import { LanguageModelService } from "../../../domain/services/language-model.service";
 import { ChatThreadRepository } from '../../../domain/repositories/chat-thread.repository';
 import { ChatThreadEntity } from "../../../domain/entities/chat-thread.entity";
-import { ChatThread } from '@prisma/client';
+const IMPORTED_HISTORY_LIMIT = 20
 
 interface EnsureChatThreadResult {
   chatThread: ChatThreadEntity;
-  threadId: string; // openAiThreadId
+  conversationId: string;
 }
 
 
@@ -24,18 +24,37 @@ export class EnsureChatThreadForPhoneUseCase {
 
 
     if (!chatThread) {
-      const threadId = await this.openaiService.createThread()
+      const conversationId = await this.openaiService.createConversation()
 
-      chatThread = await this.chatThreadRepository.createThread({ clientPhoneNumber: phoneWa, threadId })
+      chatThread = await this.chatThreadRepository.createThread({
+        clientPhoneNumber: phoneWa,
+        threadId: conversationId
+      })
+    } else if (!chatThread.openAiThreadId.startsWith('conv_')) {
+      const history = await this.chatThreadRepository.getRecentMessages(
+        chatThread.id,
+        IMPORTED_HISTORY_LIMIT
+      )
+      const conversationId = await this.openaiService.createConversation(
+        history
+          .filter((message) => message.role === 'user' || message.role === 'assistant')
+          .map((message) => ({
+            role: message.role as 'user' | 'assistant',
+            content: message.content
+          }))
+      )
+
+      chatThread = await this.chatThreadRepository.updateExternalConversationId(
+        chatThread.id,
+        conversationId
+      )
     }
-
 
     await this.chatThreadRepository.setProcessing(chatThread.id, false)
 
-
     return {
       chatThread,
-      threadId: chatThread.openAiThreadId
+      conversationId: chatThread.openAiThreadId
     }
 
   }

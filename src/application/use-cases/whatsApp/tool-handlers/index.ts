@@ -1,5 +1,5 @@
 /**
- * Tool Call Handlers for OpenAI Assistant Functions
+ * Tool Call Handlers for OpenAI Responses API functions
  * 
  * This module provides a Strategy pattern implementation for handling
  * different OpenAI function calls in the WhatsApp conversation flow.
@@ -13,9 +13,6 @@ export { ToolCallHandler, ToolCallContext } from './tool-call-handler.interface'
 
 // Factory
 export { ToolCallHandlerFactory } from './tool-call-handler.factory';
-
-// Utility handlers
-export { StreamMessageProcessor } from './stream-message-processor';
 
 // Function handlers
 export { ExtractCustomerHandler } from './extract-customer.handler';

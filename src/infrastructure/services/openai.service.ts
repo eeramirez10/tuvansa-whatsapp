@@ -1,195 +1,119 @@
-import OpenAI from 'openai';
-import { envs } from '../../config/envs';
-import { openai } from '../../config/openai-config';
-import { LanguageModelService } from '../../domain/services/language-model.service';
-import { TwilioService } from './twilio.service';
+import { createHash } from 'node:crypto'
+import OpenAI from 'openai'
+import type {
+  Response,
+  ResponseCreateParamsBase,
+  ResponseFunctionToolCall,
+  ResponseInputItem
+} from 'openai/resources/responses/responses'
+import { envs } from '../../config/envs'
+import {
+  TUVANSA_AGENT_INSTRUCTIONS,
+  TUVANSA_AGENT_TOOLS
+} from '../../config/openai-agent.config'
+import {
+  ConversationHistoryMessage,
+  LanguageModelService,
+  LanguageModelToolOutput,
+  LanguageModelTurn
+} from '../../domain/services/language-model.service'
 
-
-
+const MAX_IMPORTED_MESSAGES = 20
+type OpenAIClient = Pick<OpenAI, 'conversations' | 'responses'>
+type ResponsesModel = NonNullable<ResponseCreateParamsBase['model']>
 
 export class OpenAIService implements LanguageModelService {
+  constructor(
+    private readonly openai: OpenAIClient = new OpenAI({ apiKey: envs.OPEN_API_KEY })
+  ) { }
 
-  private openai = new OpenAI({ apiKey: envs.OPEN_API_KEY })
-  constructor(private readonly twilioService?: TwilioService) {
-  }
+  async createConversation(history: ConversationHistoryMessage[] = []): Promise<string> {
+    const items: ResponseInputItem[] = history
+      .filter((message) => message.content.trim().length > 0)
+      .slice(-MAX_IMPORTED_MESSAGES)
+      .map((message) => ({
+        type: 'message',
+        role: message.role,
+        content: message.content
+      }))
 
-  // async createThread({ phone }: { phone: string }) {
-
-  //   const createThread = new createThreadUseCase({
-  //     openAi: this.openai,
-  //     chatThreadRepository: this.chatThreadRepository
-  //   })
-  //     .execute({ phone })
-
-  //   return await createThread
-  // }
-
-  async createThread() {
-
-    const { id: threadId } = await this.openai.beta.threads.create()
-
-    return threadId;
-  }
-
-
-  async createMessage({ threadId, question }: { threadId: string, question: string }) {
-
-    const message = await openai.beta.threads.messages.create(threadId, {
-      role: 'user',
-      content: question
+    const conversation = await this.openai.conversations.create({
+      items,
+      metadata: {
+        source: 'tuvansa-whatsapp'
+      }
     })
 
-    return message;
+    return conversation.id
   }
 
-  async createRun({ threadId, assistantId = 'asst_zH28urJes1YILRhYUZrjjakE' }: { threadId: string, assistantId?: string }) {
+  async createResponse(options: {
+    conversationId: string
+    input: string
+    endUserId: string
+  }): Promise<LanguageModelTurn> {
+    const response = await this.openai.responses.create({
+      model: envs.OPENAI_MODEL as ResponsesModel,
+      conversation: options.conversationId,
+      input: options.input,
+      instructions: TUVANSA_AGENT_INSTRUCTIONS,
+      tools: TUVANSA_AGENT_TOOLS,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
+      max_output_tokens: 1200,
+      safety_identifier: this.hashEndUserId(options.endUserId)
+    })
 
-
-    const run = await openai.beta.threads.runs.create(threadId, { assistant_id: assistantId })
-
-    return run
+    return this.toLanguageModelTurn(response)
   }
 
-
-
-  async checkStatus(threadId: string, runId: string) {
-
-    try {
-      const runStatus = await this.openai.beta.threads.runs.retrieve(threadId, runId);
-      // console.log({ status: runStatus.status });
-      return runStatus;
-
-    } catch (error) {
-      console.log({ error })
-    }
-
-  }
-
-  async submitToolOutputs(threadId: string, runId: string, toolOutputs: OpenAI.Beta.Threads.Runs.RunSubmitToolOutputsParams.ToolOutput[]) {
-
-    return await this.openai.beta.threads.runs.submitToolOutputs(threadId, runId, { tool_outputs: toolOutputs });
-  }
-
-  async getMessageList(threadId: string) {
-
-
-
-    const messageList = await this.openai.beta.threads.messages.list(threadId)
-
-
-    const messages = messageList.data.map(message => ({
-      role: message.role,
-      content: message.content.map(content => (content as any).text.value),
-      created_at: message.created_at
+  async submitToolOutputs(options: {
+    conversationId: string
+    toolOutputs: LanguageModelToolOutput[]
+    endUserId: string
+  }): Promise<LanguageModelTurn> {
+    const input: ResponseInputItem[] = options.toolOutputs.map((toolOutput) => ({
+      type: 'function_call_output',
+      call_id: toolOutput.callId,
+      output: toolOutput.output
     }))
 
-    return messages
+    const response = await this.openai.responses.create({
+      model: envs.OPENAI_MODEL as ResponsesModel,
+      conversation: options.conversationId,
+      input,
+      instructions: TUVANSA_AGENT_INSTRUCTIONS,
+      tools: TUVANSA_AGENT_TOOLS,
+      tool_choice: 'auto',
+      parallel_tool_calls: false,
+      max_output_tokens: 1200,
+      safety_identifier: this.hashEndUserId(options.endUserId)
+    })
 
+    return this.toLanguageModelTurn(response)
   }
 
-  async streamMessageToWhatsApp(options: {
-    threadId: string;
-    question: any[];
-    to: string;
-    assistantId?: string;  // ahora pasamos assistant_id
-    chunkSize?: number;
-  }) {
-
-
-    const {
-      threadId,
-      question,
-      to,
-      assistantId = 'asst_zH28urJes1YILRhYUZrjjakE',  // asst_zH28urJes1YILRhYUZrjjakE tu assistant por defecto
-      chunkSize = 200
-    } = options;
-    // 1) Enviar la pregunta
-    await this.openai.beta.threads.messages.create(threadId, {
-      role: 'user',
-      content: question
-    });
-
-    // 2) Iniciar streaming
-    const stream = await this.openai.beta.threads.runs.create(threadId, {
-      assistant_id: assistantId,
-      stream: true
-    });
-
-    let buffer = '';
-
-
-
-    for await (const event of stream) {
-      if (event.event !== 'thread.message.delta') continue;
-
-      const deltaParts = (event.data as any).delta.content as Array<{
-        text: { value: string }
-      }>;
-
-      for (const part of deltaParts) {
-        buffer += part.text.value;
-
-        // console.log(buffer)
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-          // Extraemos hasta el salto (sin incluir '\n')
-          const toSend = buffer.slice(0, newlineIndex).trim();
-          // Solo enviamos si no está vacío
-          if (toSend) {
-            await this.twilioService.createWhatsAppMessage({
-              to,
-              body: toSend
-            });
-          }
-          // Quitamos lo ya enviado + el '\n'
-          buffer = buffer.slice(newlineIndex + 1);
-
-          await new Promise((resolve) => {
-            return setTimeout(resolve, 800)
-          })
-        }
-      }
+  private toLanguageModelTurn(response: Response): LanguageModelTurn {
+    if (response.status === 'failed') {
+      throw new Error(response.error?.message ?? 'OpenAI response failed')
     }
 
-    // Al final, también validamos buffer remanente
-    const remainder = buffer.trim();
-    if (remainder) {
-      await this.twilioService.createWhatsAppMessage({
-        to,
-        body: remainder
-      });
-    }
+    const toolCalls = response.output
+      .filter((item): item is ResponseFunctionToolCall => item.type === 'function_call')
+      .map((item) => ({
+        callId: item.call_id,
+        name: item.name,
+        arguments: item.arguments
+      }))
 
+    return {
+      responseId: response.id,
+      outputText: response.output_text.trim(),
+      toolCalls
+    }
   }
 
-
-  async startRunStream(opts: { threadId: string; assistantId?: string }) {
-    const { threadId, assistantId } = opts;
-    const stream = await this.openai.beta.threads.runs.create(threadId, {
-      assistant_id: assistantId,
-      stream: true
-    });
-    // El primer evento "thread.run.created" te da el runId en event.data.id
-    let runId: string;
-    const iterator = stream[Symbol.asyncIterator]();
-    const first = await iterator.next();
-    if (first.value.event === 'thread.run.created') {
-      runId = first.value.data.id;
-    } else {
-      throw new Error('No se pudo obtener runId');
-    }
-    // Reemplazamos el primer evento en el stream para que siga fluyendo
-    const newStream = (async function* () {
-      yield first.value;
-      yield* iterator as any;
-    })();
-
-    return { runId, stream: newStream };
+  private hashEndUserId(endUserId: string): string {
+    return createHash('sha256').update(endUserId).digest('hex')
   }
-
-
-
-
-
 }
